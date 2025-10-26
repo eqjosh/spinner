@@ -122,147 +122,159 @@ export default function Spinner() {
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-8">
-      <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">Spin the Wheel</h2>
+      <h2 className="text-3xl font-bold text-gray-800 mb-8 text-center">Spin the Wheel</h2>
 
-      {/* Label Input */}
-      <div className="mb-8 max-w-md mx-auto">
-        <label htmlFor="spin-label" className="block text-sm font-medium text-gray-700 mb-2">
-          Label (Optional)
-        </label>
-        <input
-          type="text"
-          id="spin-label"
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-          disabled={spinning}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
-          placeholder="e.g., Sprint Demo, Code Review"
-        />
-      </div>
+      {/* Responsive Layout: Desktop (side-by-side) vs Mobile (stacked) */}
+      <div className="flex flex-col lg:flex-row gap-8 items-start">
+        {/* Left Column: Wheel + Spin Button */}
+        <div className="flex flex-col items-center w-full lg:w-auto">
+          {/* Wheel Container */}
+          <div className="relative w-96 h-96 mb-6">
+            {/* Pointer - elevated and with shadow */}
+            <div className="absolute -top-8 left-1/2 -translate-x-1/2 z-10" style={{ filter: 'drop-shadow(0 4px 6px rgba(0, 0, 0, 0.3))' }}>
+              <div className="w-0 h-0 border-l-[24px] border-l-transparent border-r-[24px] border-r-transparent border-t-[48px] border-t-red-600"></div>
+            </div>
 
-      {/* Wheel Container */}
-      <div className="relative w-96 h-96 mx-auto mb-8">
-        {/* Pointer */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 z-10">
-          <div className="w-0 h-0 border-l-[20px] border-l-transparent border-r-[20px] border-r-transparent border-t-[40px] border-t-red-600"></div>
-        </div>
+            {/* Wheel */}
+            <div
+              className="relative w-full h-full"
+              style={{
+                transform: `rotate(${rotation}deg)`,
+                transition: spinning ? 'transform 5s cubic-bezier(0.33, 1, 0.68, 1)' : 'none',
+              }}
+            >
+              <svg viewBox="0 0 384 384" className="w-full h-full rounded-full shadow-2xl">
+                {/* Outer border circle */}
+                <circle cx="192" cy="192" r="192" fill="none" stroke="#1f2937" strokeWidth="8" />
 
-        {/* Wheel */}
-        <div
-          className="relative w-full h-full"
-          style={{
-            transform: `rotate(${rotation}deg)`,
-            transition: spinning ? 'transform 5s cubic-bezier(0.33, 1, 0.68, 1)' : 'none',
-          }}
-        >
-          <svg viewBox="0 0 384 384" className="w-full h-full rounded-full shadow-2xl">
-            {/* Outer border circle */}
-            <circle cx="192" cy="192" r="192" fill="none" stroke="#1f2937" strokeWidth="8" />
+                {/* Segments */}
+                {allMembers.map((member, index) => {
+                  const isEligible = eligibleMembers.some(em => em.id === member.id);
+                  const color = colors[index % colors.length];
 
-            {/* Segments */}
-            {allMembers.map((member, index) => {
-              const isEligible = eligibleMembers.some(em => em.id === member.id);
-              const color = colors[index % colors.length];
+                  return (
+                    <g key={member.id}>
+                      <path
+                        d={createSlicePath(index, allMembers.length)}
+                        fill={color}
+                        opacity={isEligible ? 1 : 0.5}
+                      />
+                    </g>
+                  );
+                })}
+              </svg>
 
-              return (
-                <g key={member.id}>
-                  <path
-                    d={createSlicePath(index, allMembers.length)}
-                    fill={color}
-                    opacity={isEligible ? 1 : 0.5}
-                  />
-                </g>
-              );
-            })}
-          </svg>
+              {/* Photos overlaid on wheel */}
+              {allMembers.map((member, index) => {
+                const degreesPerSegment = 360 / allMembers.length;
+                const angle = index * degreesPerSegment + (degreesPerSegment / 2); // Center of segment
+                const angleRad = ((angle - 90) * Math.PI) / 180; // -90 to start at top
 
-          {/* Photos overlaid on wheel */}
-          {allMembers.map((member, index) => {
-            const degreesPerSegment = 360 / allMembers.length;
-            const angle = index * degreesPerSegment + (degreesPerSegment / 2); // Center of segment
-            const angleRad = ((angle - 90) * Math.PI) / 180; // -90 to start at top
+                // Position at 60% of radius from center
+                const radius = 192 * 0.6;
+                const x = 192 + radius * Math.cos(angleRad);
+                const y = 192 + radius * Math.sin(angleRad);
 
-            // Position at 60% of radius from center
-            const radius = 192 * 0.6;
-            const x = 192 + radius * Math.cos(angleRad);
-            const y = 192 + radius * Math.sin(angleRad);
-
-            return (
-              <div
-                key={`photo-${member.id}`}
-                className="absolute"
-                style={{
-                  left: `${x}px`,
-                  top: `${y}px`,
-                  transform: 'translate(-50%, -50%)',
-                }}
-              >
-                {member.photo ? (
-                  <img
-                    src={member.photo}
-                    alt={member.name}
-                    className="rounded-full object-cover border-4 border-white shadow-lg"
-                    style={{
-                      width: `${photoSize}px`,
-                      height: `${photoSize}px`,
-                    }}
-                  />
-                ) : (
+                return (
                   <div
-                    className="rounded-full bg-white flex items-center justify-center border-4 border-white shadow-lg"
+                    key={`photo-${member.id}`}
+                    className="absolute"
                     style={{
-                      width: `${photoSize}px`,
-                      height: `${photoSize}px`,
+                      left: `${x}px`,
+                      top: `${y}px`,
+                      transform: 'translate(-50%, -50%)',
                     }}
                   >
-                    <span
-                      className="text-gray-700 font-bold"
-                      style={{ fontSize: `${photoSize / 2}px` }}
-                    >
-                      {member.name.charAt(0).toUpperCase()}
+                    {member.photo ? (
+                      <img
+                        src={member.photo}
+                        alt={member.name}
+                        className="rounded-full object-cover border-4 border-white shadow-lg"
+                        style={{
+                          width: `${photoSize}px`,
+                          height: `${photoSize}px`,
+                        }}
+                      />
+                    ) : (
+                      <div
+                        className="rounded-full bg-white flex items-center justify-center border-4 border-white shadow-lg"
+                        style={{
+                          width: `${photoSize}px`,
+                          height: `${photoSize}px`,
+                        }}
+                      >
+                        <span
+                          className="text-gray-700 font-bold"
+                          style={{ fontSize: `${photoSize / 2}px` }}
+                        >
+                          {member.name.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Spin Button */}
+          <button
+            onClick={handleSpin}
+            disabled={spinning}
+            className="px-12 py-4 bg-blue-600 text-white text-2xl font-bold rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors shadow-lg"
+          >
+            {spinning ? 'Spinning...' : 'SPIN!'}
+          </button>
+
+          {/* Info */}
+          <div className="mt-4 text-center text-sm text-gray-600">
+            <p>
+              {allMembers.length} total • {eligibleMembers.length} eligible
+            </p>
+          </div>
+        </div>
+
+        {/* Right Column: Label + Winner */}
+        <div className="flex-1 w-full lg:max-w-md space-y-6">
+          {/* Label Input */}
+          <div>
+            <label htmlFor="spin-label" className="block text-lg font-medium text-gray-700 mb-3">
+              Spinning for (optional label)
+            </label>
+            <input
+              type="text"
+              id="spin-label"
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              disabled={spinning}
+              className="w-full px-4 py-3 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+              placeholder="e.g., Sprint Demo, Code Review"
+            />
+          </div>
+
+          {/* Winner Display */}
+          {winner && !spinning && (
+            <div className="p-6 bg-green-100 border-2 border-green-500 rounded-lg animate-pulse">
+              <h3 className="text-2xl font-bold text-green-800 mb-3 text-center">Winner!</h3>
+              <div className="flex items-center justify-center gap-4">
+                {winner.photo ? (
+                  <img
+                    src={winner.photo}
+                    alt={winner.name}
+                    className="w-20 h-20 rounded-full object-cover border-4 border-green-600"
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center border-4 border-green-600">
+                    <span className="text-green-700 font-bold text-3xl">
+                      {winner.name.charAt(0).toUpperCase()}
                     </span>
                   </div>
                 )}
+                <p className="text-3xl font-bold text-green-900">{winner.name}</p>
               </div>
-            );
-          })}
+            </div>
+          )}
         </div>
-      </div>
-
-      {/* Spin Button */}
-      <div className="text-center">
-        <button
-          onClick={handleSpin}
-          disabled={spinning}
-          className="px-8 py-4 bg-blue-600 text-white text-xl font-bold rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors shadow-lg"
-        >
-          {spinning ? 'Spinning...' : 'SPIN!'}
-        </button>
-      </div>
-
-      {/* Winner Display */}
-      {winner && !spinning && (
-        <div className="mt-8 p-6 bg-green-100 border-2 border-green-500 rounded-lg text-center animate-pulse">
-          <h3 className="text-2xl font-bold text-green-800 mb-2">Winner!</h3>
-          <div className="flex items-center justify-center gap-4">
-            {winner.photo && (
-              <img
-                src={winner.photo}
-                alt={winner.name}
-                className="w-16 h-16 rounded-full object-cover"
-              />
-            )}
-            <p className="text-3xl font-bold text-green-900">{winner.name}</p>
-          </div>
-        </div>
-      )}
-
-      {/* Info */}
-      <div className="mt-6 text-center text-sm text-gray-600">
-        <p>
-          {allMembers.length} total member{allMembers.length !== 1 ? 's' : ''} • {' '}
-          {eligibleMembers.length} eligible
-        </p>
       </div>
     </div>
   );
