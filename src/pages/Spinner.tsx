@@ -6,8 +6,8 @@ export default function Spinner() {
   const [label, setLabel] = useState('');
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
-  const [allMembers, setAllMembers] = useState<TeamMember[]>([]); // All active members for display
-  const [eligibleMembers, setEligibleMembers] = useState<TeamMember[]>([]); // Members who can win
+  const [allMembers, setAllMembers] = useState<TeamMember[]>([]);
+  const [eligibleMembers, setEligibleMembers] = useState<TeamMember[]>([]);
   const [winner, setWinner] = useState<TeamMember | null>(null);
 
   useEffect(() => {
@@ -15,12 +15,10 @@ export default function Spinner() {
   }, []);
 
   const loadMembers = () => {
-    // Get all active members for wheel display
     const team = storageService.getTeam();
     const activeMembers = team.filter(m => m.isActive);
     setAllMembers(activeMembers);
 
-    // Get eligible members for selection
     const eligible = storageService.getEligibleMembers();
     setEligibleMembers(eligible);
   };
@@ -28,30 +26,31 @@ export default function Spinner() {
   const handleSpin = () => {
     if (spinning || eligibleMembers.length === 0) return;
 
-    // Reset winner
     setWinner(null);
     setSpinning(true);
 
-    // Select random winner from ELIGIBLE members only
+    // Select random winner from eligible members
     const randomIndex = Math.floor(Math.random() * eligibleMembers.length);
     const selectedMember = eligibleMembers[randomIndex];
 
-    // Find the index of the winner in the ALL members array (for wheel position)
+    // Find the index in allMembers array
     const wheelIndex = allMembers.findIndex(m => m.id === selectedMember.id);
 
-    // Calculate rotation
-    // More spins for more suspense
+    // Calculate precise rotation to align pointer with center of segment
+    const degreesPerSegment = 360 / allMembers.length;
     const extraSpins = 5 + Math.random() * 3;
-    const degreesPerMember = 360 / allMembers.length;
-    const finalRotation = rotation + 360 * extraSpins + wheelIndex * degreesPerMember;
+
+    // The pointer is at top (0 degrees), we want to rotate the wheel so the winner is at top
+    // Since segments start at -90 degrees, we need to adjust
+    const targetAngle = wheelIndex * degreesPerSegment + (degreesPerSegment / 2);
+    const finalRotation = 360 * extraSpins + targetAngle;
+
     setRotation(finalRotation);
 
-    // After animation, show winner
     setTimeout(() => {
       setWinner(selectedMember);
       setSpinning(false);
 
-      // Save to history
       const historyEntry: SpinHistory = {
         id: Date.now().toString(),
         memberId: selectedMember.id,
@@ -62,12 +61,10 @@ export default function Spinner() {
       };
       storageService.addHistoryEntry(historyEntry);
 
-      // Refresh members for next spin
       loadMembers();
-    }, 5000); // 5 seconds for the spin animation
+    }, 5000);
   };
 
-  // Calculate photo size based on number of members
   const getPhotoSize = (memberCount: number) => {
     if (memberCount <= 3) return 100;
     if (memberCount <= 5) return 80;
@@ -75,13 +72,30 @@ export default function Spinner() {
     return 50;
   };
 
+  // Helper to create SVG path for pie slice
+  const createSlicePath = (index: number, total: number) => {
+    const angle = 360 / total;
+    const startAngle = index * angle - 90; // Start at top
+    const endAngle = startAngle + angle;
+
+    const startRad = (startAngle * Math.PI) / 180;
+    const endRad = (endAngle * Math.PI) / 180;
+
+    const x1 = 192 + 192 * Math.cos(startRad);
+    const y1 = 192 + 192 * Math.sin(startRad);
+    const x2 = 192 + 192 * Math.cos(endRad);
+    const y2 = 192 + 192 * Math.sin(endRad);
+
+    const largeArc = angle > 180 ? 1 : 0;
+
+    return `M 192 192 L ${x1} ${y1} A 192 192 0 ${largeArc} 1 ${x2} ${y2} Z`;
+  };
+
   if (allMembers.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow-lg p-8 text-center">
         <h2 className="text-2xl font-bold text-gray-800 mb-4">No Team Members</h2>
-        <p className="text-gray-600 mb-4">
-          There are no active team members.
-        </p>
+        <p className="text-gray-600 mb-4">There are no active team members.</p>
         <p className="text-blue-600 font-medium">
           Go to Team Admin to add or activate team members.
         </p>
@@ -104,6 +118,7 @@ export default function Spinner() {
   }
 
   const photoSize = getPhotoSize(allMembers.length);
+  const colors = ['#ef4444', '#3b82f6', '#22c55e', '#eab308', '#a855f7', '#ec4899', '#6366f1', '#f97316'];
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-8">
@@ -134,72 +149,80 @@ export default function Spinner() {
 
         {/* Wheel */}
         <div
-          className="w-full h-full rounded-full border-8 border-gray-800 overflow-hidden relative shadow-2xl"
+          className="relative w-full h-full"
           style={{
             transform: `rotate(${rotation}deg)`,
             transition: spinning ? 'transform 5s cubic-bezier(0.33, 1, 0.68, 1)' : 'none',
           }}
         >
+          <svg viewBox="0 0 384 384" className="w-full h-full rounded-full shadow-2xl">
+            {/* Outer border circle */}
+            <circle cx="192" cy="192" r="192" fill="none" stroke="#1f2937" strokeWidth="8" />
+
+            {/* Segments */}
+            {allMembers.map((member, index) => {
+              const isEligible = eligibleMembers.some(em => em.id === member.id);
+              const color = colors[index % colors.length];
+
+              return (
+                <g key={member.id}>
+                  <path
+                    d={createSlicePath(index, allMembers.length)}
+                    fill={color}
+                    opacity={isEligible ? 1 : 0.5}
+                  />
+                </g>
+              );
+            })}
+          </svg>
+
+          {/* Photos overlaid on wheel */}
           {allMembers.map((member, index) => {
             const degreesPerSegment = 360 / allMembers.length;
-            const startAngle = index * degreesPerSegment;
-            const colors = [
-              'bg-red-500',
-              'bg-blue-500',
-              'bg-green-500',
-              'bg-yellow-500',
-              'bg-purple-500',
-              'bg-pink-500',
-              'bg-indigo-500',
-              'bg-orange-500',
-            ];
-            const color = colors[index % colors.length];
+            const angle = index * degreesPerSegment + (degreesPerSegment / 2); // Center of segment
+            const angleRad = ((angle - 90) * Math.PI) / 180; // -90 to start at top
 
-            // Check if this member is eligible
-            const isEligible = eligibleMembers.some(em => em.id === member.id);
+            // Position at 60% of radius from center
+            const radius = 192 * 0.6;
+            const x = 192 + radius * Math.cos(angleRad);
+            const y = 192 + radius * Math.sin(angleRad);
 
             return (
               <div
-                key={member.id}
-                className={`absolute w-full h-full ${color} flex items-center justify-center ${!isEligible ? 'opacity-50' : ''}`}
+                key={`photo-${member.id}`}
+                className="absolute"
                 style={{
-                  clipPath: `polygon(50% 50%, ${50 + 50 * Math.cos((startAngle - 90) * Math.PI / 180)}% ${50 + 50 * Math.sin((startAngle - 90) * Math.PI / 180)}%, ${50 + 50 * Math.cos((startAngle + degreesPerSegment - 90) * Math.PI / 180)}% ${50 + 50 * Math.sin((startAngle + degreesPerSegment - 90) * Math.PI / 180)}%)`,
-                  transform: `rotate(${startAngle}deg)`,
-                  transformOrigin: 'center',
+                  left: `${x}px`,
+                  top: `${y}px`,
+                  transform: 'translate(-50%, -50%)',
                 }}
               >
-                <div
-                  className="absolute flex items-center justify-center"
-                  style={{
-                    transform: `rotate(${degreesPerSegment / 2}deg) translateY(-${photoSize / 2 + 40}px)`,
-                    transformOrigin: 'center',
-                  }}
-                >
-                  {/* Photo or Initial */}
-                  {member.photo ? (
-                    <img
-                      src={member.photo}
-                      alt={member.name}
-                      className="rounded-full object-cover border-4 border-white shadow-lg"
-                      style={{
-                        width: `${photoSize}px`,
-                        height: `${photoSize}px`,
-                      }}
-                    />
-                  ) : (
-                    <div
-                      className="rounded-full bg-white flex items-center justify-center border-4 border-white shadow-lg"
-                      style={{
-                        width: `${photoSize}px`,
-                        height: `${photoSize}px`,
-                      }}
+                {member.photo ? (
+                  <img
+                    src={member.photo}
+                    alt={member.name}
+                    className="rounded-full object-cover border-4 border-white shadow-lg"
+                    style={{
+                      width: `${photoSize}px`,
+                      height: `${photoSize}px`,
+                    }}
+                  />
+                ) : (
+                  <div
+                    className="rounded-full bg-white flex items-center justify-center border-4 border-white shadow-lg"
+                    style={{
+                      width: `${photoSize}px`,
+                      height: `${photoSize}px`,
+                    }}
+                  >
+                    <span
+                      className="text-gray-700 font-bold"
+                      style={{ fontSize: `${photoSize / 2}px` }}
                     >
-                      <span className="text-gray-700 font-bold" style={{ fontSize: `${photoSize / 2}px` }}>
-                        {member.name.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                  )}
-                </div>
+                      {member.name.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                )}
               </div>
             );
           })}
