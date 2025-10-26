@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { storageService } from '../services/storage';
 import type { TeamMember, SpinHistory } from '../types';
 
@@ -9,9 +9,17 @@ export default function Spinner() {
   const [allMembers, setAllMembers] = useState<TeamMember[]>([]);
   const [eligibleMembers, setEligibleMembers] = useState<TeamMember[]>([]);
   const [winner, setWinner] = useState<TeamMember | null>(null);
+  const spinTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     loadMembers();
+
+    // Cleanup timeout on unmount
+    return () => {
+      if (spinTimeoutRef.current) {
+        clearTimeout(spinTimeoutRef.current);
+      }
+    };
   }, []);
 
   const loadMembers = () => {
@@ -25,6 +33,11 @@ export default function Spinner() {
 
   const handleSpin = () => {
     if (spinning || eligibleMembers.length === 0) return;
+
+    // Clear any existing timeout from previous spin
+    if (spinTimeoutRef.current) {
+      clearTimeout(spinTimeoutRef.current);
+    }
 
     setWinner(null);
     setSpinning(true);
@@ -44,18 +57,34 @@ export default function Spinner() {
     // Keep within central 60% of segment (avoid outer 20% on each side)
     const randomOffset = (Math.random() - 0.5) * degreesPerSegment * 0.4;
 
-    // Segments start at -90 degrees. To align winner's center with pointer at top (0 degrees):
-    // We need to rotate the wheel so that the segment center ends up at 0 degrees
-    // Segment i's center is at: -90 + i * degreesPerSegment + degreesPerSegment/2
-    // To bring this to 0, we rotate by: 90 - i * degreesPerSegment - degreesPerSegment/2
-    const targetAngle = 90 - wheelIndex * degreesPerSegment - (degreesPerSegment / 2) + randomOffset;
-    const finalRotation = 360 * extraSpins + targetAngle;
+    // Calculate target angle for this segment
+    // Segments start at -90 degrees (top). Segment i's center is at: -90 + i * degreesPerSegment + degreesPerSegment/2
+    // To bring segment center to pointer (top = 0°), we rotate: 90 - i * degreesPerSegment - degreesPerSegment/2
+    let targetAngle = 90 - wheelIndex * degreesPerSegment - (degreesPerSegment / 2) + randomOffset;
+
+    // Normalize target angle to 0-360 range
+    targetAngle = ((targetAngle % 360) + 360) % 360;
+
+    // Calculate current wheel position (normalized to 0-360)
+    const currentAngle = ((rotation % 360) + 360) % 360;
+
+    // Calculate rotation needed from current position to target
+    // Always go forward (clockwise) for full effect
+    let rotationNeeded = targetAngle - currentAngle;
+    if (rotationNeeded < 0) {
+      rotationNeeded += 360;
+    }
+
+    // Final rotation: current + multiple spins + rotation to target
+    const finalRotation = rotation + (360 * extraSpins) + rotationNeeded;
 
     setRotation(finalRotation);
 
-    setTimeout(() => {
+    // Store timeout ID for cleanup
+    spinTimeoutRef.current = setTimeout(() => {
       setWinner(selectedMember);
       setSpinning(false);
+      spinTimeoutRef.current = null;
 
       const historyEntry: SpinHistory = {
         id: Date.now().toString(),
