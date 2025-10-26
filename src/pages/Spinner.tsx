@@ -7,6 +7,7 @@ export default function Spinner() {
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [eligibleMembers, setEligibleMembers] = useState<TeamMember[]>([]);
+  const [wheelMembers, setWheelMembers] = useState<TeamMember[]>([]); // Members shown on wheel
   const [winner, setWinner] = useState<TeamMember | null>(null);
 
   useEffect(() => {
@@ -16,21 +17,29 @@ export default function Spinner() {
   const loadEligibleMembers = () => {
     const members = storageService.getEligibleMembers();
     setEligibleMembers(members);
+    // Only update wheel if not spinning
+    if (!spinning) {
+      setWheelMembers(members);
+    }
   };
 
   const handleSpin = () => {
     if (spinning || eligibleMembers.length === 0) return;
 
-    setSpinning(true);
+    // Reset winner and set wheel members to current eligible members
     setWinner(null);
+    setWheelMembers(eligibleMembers);
+    setSpinning(true);
 
     // Select random winner
     const randomIndex = Math.floor(Math.random() * eligibleMembers.length);
     const selectedMember = eligibleMembers[randomIndex];
 
     // Calculate rotation (multiple spins + final position)
+    // Spin 5-7 times plus land on winner
+    const extraSpins = 5 + Math.random() * 2;
     const degreesPerMember = 360 / eligibleMembers.length;
-    const finalRotation = rotation + 360 * 5 + randomIndex * degreesPerMember;
+    const finalRotation = rotation + 360 * extraSpins + randomIndex * degreesPerMember;
     setRotation(finalRotation);
 
     // After animation, show winner
@@ -49,9 +58,18 @@ export default function Spinner() {
       };
       storageService.addHistoryEntry(historyEntry);
 
-      // Refresh eligible members
-      loadEligibleMembers();
-    }, 4000);
+      // Refresh eligible members for next spin (but don't update wheel display)
+      const updatedMembers = storageService.getEligibleMembers();
+      setEligibleMembers(updatedMembers);
+    }, 5000); // 5 seconds for the spin animation
+  };
+
+  // Calculate photo size based on number of members
+  const getPhotoSize = (memberCount: number) => {
+    if (memberCount <= 4) return 80;
+    if (memberCount <= 6) return 60;
+    if (memberCount <= 8) return 50;
+    return 40;
   };
 
   if (eligibleMembers.length === 0) {
@@ -72,6 +90,8 @@ export default function Spinner() {
       </div>
     );
   }
+
+  const photoSize = getPhotoSize(wheelMembers.length);
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-8">
@@ -94,7 +114,7 @@ export default function Spinner() {
       </div>
 
       {/* Wheel Container */}
-      <div className="relative w-80 h-80 mx-auto mb-8">
+      <div className="relative w-96 h-96 mx-auto mb-8">
         {/* Pointer */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 z-10">
           <div className="w-0 h-0 border-l-[20px] border-l-transparent border-r-[20px] border-r-transparent border-t-[40px] border-t-red-600"></div>
@@ -102,14 +122,14 @@ export default function Spinner() {
 
         {/* Wheel */}
         <div
-          className="w-full h-full rounded-full border-8 border-gray-800 overflow-hidden relative"
+          className="w-full h-full rounded-full border-8 border-gray-800 overflow-hidden relative shadow-2xl"
           style={{
             transform: `rotate(${rotation}deg)`,
-            transition: spinning ? 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)' : 'none',
+            transition: spinning ? 'transform 5s cubic-bezier(0.17, 0.67, 0.83, 0.67)' : 'none',
           }}
         >
-          {eligibleMembers.map((member, index) => {
-            const degreesPerSegment = 360 / eligibleMembers.length;
+          {wheelMembers.map((member, index) => {
+            const degreesPerSegment = 360 / wheelMembers.length;
             const startAngle = index * degreesPerSegment;
             const colors = [
               'bg-red-500',
@@ -134,13 +154,40 @@ export default function Spinner() {
                 }}
               >
                 <div
-                  className="absolute text-white font-bold text-sm"
+                  className="absolute flex flex-col items-center"
                   style={{
-                    transform: `rotate(${degreesPerSegment / 2}deg) translate(0, -120px)`,
+                    transform: `rotate(${degreesPerSegment / 2}deg) translateY(-${photoSize + 30}px)`,
                     transformOrigin: 'center',
                   }}
                 >
-                  {member.name}
+                  {/* Photo */}
+                  {member.photo ? (
+                    <img
+                      src={member.photo}
+                      alt={member.name}
+                      className="rounded-full object-cover border-4 border-white shadow-lg mb-2"
+                      style={{
+                        width: `${photoSize}px`,
+                        height: `${photoSize}px`,
+                      }}
+                    />
+                  ) : (
+                    <div
+                      className="rounded-full bg-white flex items-center justify-center border-4 border-white shadow-lg mb-2"
+                      style={{
+                        width: `${photoSize}px`,
+                        height: `${photoSize}px`,
+                      }}
+                    >
+                      <span className="text-gray-700 font-bold" style={{ fontSize: `${photoSize / 2}px` }}>
+                        {member.name.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                  )}
+                  {/* Name */}
+                  <span className="text-white font-bold text-sm drop-shadow-lg text-center px-2">
+                    {member.name}
+                  </span>
                 </div>
               </div>
             );
@@ -160,7 +207,7 @@ export default function Spinner() {
       </div>
 
       {/* Winner Display */}
-      {winner && (
+      {winner && !spinning && (
         <div className="mt-8 p-6 bg-green-100 border-2 border-green-500 rounded-lg text-center animate-pulse">
           <h3 className="text-2xl font-bold text-green-800 mb-2">Winner!</h3>
           <div className="flex items-center justify-center gap-4">
