@@ -7,7 +7,6 @@ export default function Spinner() {
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [eligibleMembers, setEligibleMembers] = useState<TeamMember[]>([]);
-  const [wheelMembers, setWheelMembers] = useState<TeamMember[]>([]); // Members shown on wheel
   const [winner, setWinner] = useState<TeamMember | null>(null);
 
   useEffect(() => {
@@ -17,18 +16,13 @@ export default function Spinner() {
   const loadEligibleMembers = () => {
     const members = storageService.getEligibleMembers();
     setEligibleMembers(members);
-    // Only update wheel if not spinning
-    if (!spinning) {
-      setWheelMembers(members);
-    }
   };
 
   const handleSpin = () => {
     if (spinning || eligibleMembers.length === 0) return;
 
-    // Reset winner and set wheel members to current eligible members
+    // Reset winner
     setWinner(null);
-    setWheelMembers(eligibleMembers);
     setSpinning(true);
 
     // Select random winner
@@ -58,18 +52,17 @@ export default function Spinner() {
       };
       storageService.addHistoryEntry(historyEntry);
 
-      // Refresh eligible members for next spin (but don't update wheel display)
-      const updatedMembers = storageService.getEligibleMembers();
-      setEligibleMembers(updatedMembers);
+      // Refresh eligible members for next spin
+      loadEligibleMembers();
     }, 5000); // 5 seconds for the spin animation
   };
 
   // Calculate photo size based on number of members
   const getPhotoSize = (memberCount: number) => {
-    if (memberCount <= 4) return 80;
-    if (memberCount <= 6) return 60;
-    if (memberCount <= 8) return 50;
-    return 40;
+    if (memberCount <= 3) return 100;
+    if (memberCount <= 5) return 80;
+    if (memberCount <= 8) return 60;
+    return 50;
   };
 
   if (eligibleMembers.length === 0) {
@@ -91,7 +84,7 @@ export default function Spinner() {
     );
   }
 
-  const photoSize = getPhotoSize(wheelMembers.length);
+  const photoSize = getPhotoSize(eligibleMembers.length);
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-8">
@@ -128,8 +121,8 @@ export default function Spinner() {
             transition: spinning ? 'transform 5s cubic-bezier(0.17, 0.67, 0.83, 0.67)' : 'none',
           }}
         >
-          {wheelMembers.map((member, index) => {
-            const degreesPerSegment = 360 / wheelMembers.length;
+          {eligibleMembers.map((member, index) => {
+            const degreesPerSegment = 360 / eligibleMembers.length;
             const startAngle = index * degreesPerSegment;
             const colors = [
               'bg-red-500',
@@ -154,18 +147,18 @@ export default function Spinner() {
                 }}
               >
                 <div
-                  className="absolute flex flex-col items-center"
+                  className="absolute flex items-center justify-center"
                   style={{
-                    transform: `rotate(${degreesPerSegment / 2}deg) translateY(-${photoSize + 30}px)`,
+                    transform: `rotate(${degreesPerSegment / 2}deg) translateY(-${photoSize / 2 + 40}px)`,
                     transformOrigin: 'center',
                   }}
                 >
-                  {/* Photo */}
+                  {/* Photo or Initial */}
                   {member.photo ? (
                     <img
                       src={member.photo}
                       alt={member.name}
-                      className="rounded-full object-cover border-4 border-white shadow-lg mb-2"
+                      className="rounded-full object-cover border-4 border-white shadow-lg"
                       style={{
                         width: `${photoSize}px`,
                         height: `${photoSize}px`,
@@ -173,7 +166,7 @@ export default function Spinner() {
                     />
                   ) : (
                     <div
-                      className="rounded-full bg-white flex items-center justify-center border-4 border-white shadow-lg mb-2"
+                      className="rounded-full bg-white flex items-center justify-center border-4 border-white shadow-lg"
                       style={{
                         width: `${photoSize}px`,
                         height: `${photoSize}px`,
@@ -184,10 +177,6 @@ export default function Spinner() {
                       </span>
                     </div>
                   )}
-                  {/* Name */}
-                  <span className="text-white font-bold text-sm drop-shadow-lg text-center px-2">
-                    {member.name}
-                  </span>
                 </div>
               </div>
             );
