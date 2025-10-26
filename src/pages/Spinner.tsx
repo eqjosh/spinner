@@ -6,16 +6,23 @@ export default function Spinner() {
   const [label, setLabel] = useState('');
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
-  const [eligibleMembers, setEligibleMembers] = useState<TeamMember[]>([]);
+  const [allMembers, setAllMembers] = useState<TeamMember[]>([]); // All active members for display
+  const [eligibleMembers, setEligibleMembers] = useState<TeamMember[]>([]); // Members who can win
   const [winner, setWinner] = useState<TeamMember | null>(null);
 
   useEffect(() => {
-    loadEligibleMembers();
+    loadMembers();
   }, []);
 
-  const loadEligibleMembers = () => {
-    const members = storageService.getEligibleMembers();
-    setEligibleMembers(members);
+  const loadMembers = () => {
+    // Get all active members for wheel display
+    const team = storageService.getTeam();
+    const activeMembers = team.filter(m => m.isActive);
+    setAllMembers(activeMembers);
+
+    // Get eligible members for selection
+    const eligible = storageService.getEligibleMembers();
+    setEligibleMembers(eligible);
   };
 
   const handleSpin = () => {
@@ -25,15 +32,18 @@ export default function Spinner() {
     setWinner(null);
     setSpinning(true);
 
-    // Select random winner
+    // Select random winner from ELIGIBLE members only
     const randomIndex = Math.floor(Math.random() * eligibleMembers.length);
     const selectedMember = eligibleMembers[randomIndex];
 
-    // Calculate rotation (multiple spins + final position)
-    // Spin 5-7 times plus land on winner
-    const extraSpins = 5 + Math.random() * 2;
-    const degreesPerMember = 360 / eligibleMembers.length;
-    const finalRotation = rotation + 360 * extraSpins + randomIndex * degreesPerMember;
+    // Find the index of the winner in the ALL members array (for wheel position)
+    const wheelIndex = allMembers.findIndex(m => m.id === selectedMember.id);
+
+    // Calculate rotation
+    // More spins for more suspense
+    const extraSpins = 5 + Math.random() * 3;
+    const degreesPerMember = 360 / allMembers.length;
+    const finalRotation = rotation + 360 * extraSpins + wheelIndex * degreesPerMember;
     setRotation(finalRotation);
 
     // After animation, show winner
@@ -52,8 +62,8 @@ export default function Spinner() {
       };
       storageService.addHistoryEntry(historyEntry);
 
-      // Refresh eligible members for next spin
-      loadEligibleMembers();
+      // Refresh members for next spin
+      loadMembers();
     }, 5000); // 5 seconds for the spin animation
   };
 
@@ -65,26 +75,35 @@ export default function Spinner() {
     return 50;
   };
 
-  if (eligibleMembers.length === 0) {
+  if (allMembers.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">No Eligible Members</h2>
+        <h2 className="text-2xl font-bold text-gray-800 mb-4">No Team Members</h2>
         <p className="text-gray-600 mb-4">
-          There are no team members available to spin. This could be because:
+          There are no active team members.
         </p>
-        <ul className="text-left max-w-md mx-auto space-y-2 text-gray-600 mb-6">
-          <li>• No team members have been added yet</li>
-          <li>• All team members are inactive</li>
-          <li>• All active members were selected in the last 30 days</li>
-        </ul>
         <p className="text-blue-600 font-medium">
-          Go to Team Admin to add or activate team members, or check History to allow recent winners to be selected again.
+          Go to Team Admin to add or activate team members.
         </p>
       </div>
     );
   }
 
-  const photoSize = getPhotoSize(eligibleMembers.length);
+  if (eligibleMembers.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+        <h2 className="text-2xl font-bold text-gray-800 mb-4">No Eligible Members</h2>
+        <p className="text-gray-600 mb-4">
+          All active members were selected in the last 30 days.
+        </p>
+        <p className="text-blue-600 font-medium">
+          Check History to allow recent winners to be selected again.
+        </p>
+      </div>
+    );
+  }
+
+  const photoSize = getPhotoSize(allMembers.length);
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-8">
@@ -118,11 +137,11 @@ export default function Spinner() {
           className="w-full h-full rounded-full border-8 border-gray-800 overflow-hidden relative shadow-2xl"
           style={{
             transform: `rotate(${rotation}deg)`,
-            transition: spinning ? 'transform 5s cubic-bezier(0.17, 0.67, 0.83, 0.67)' : 'none',
+            transition: spinning ? 'transform 5s cubic-bezier(0.33, 1, 0.68, 1)' : 'none',
           }}
         >
-          {eligibleMembers.map((member, index) => {
-            const degreesPerSegment = 360 / eligibleMembers.length;
+          {allMembers.map((member, index) => {
+            const degreesPerSegment = 360 / allMembers.length;
             const startAngle = index * degreesPerSegment;
             const colors = [
               'bg-red-500',
@@ -136,10 +155,13 @@ export default function Spinner() {
             ];
             const color = colors[index % colors.length];
 
+            // Check if this member is eligible
+            const isEligible = eligibleMembers.some(em => em.id === member.id);
+
             return (
               <div
                 key={member.id}
-                className={`absolute w-full h-full ${color} flex items-center justify-center`}
+                className={`absolute w-full h-full ${color} flex items-center justify-center ${!isEligible ? 'opacity-50' : ''}`}
                 style={{
                   clipPath: `polygon(50% 50%, ${50 + 50 * Math.cos((startAngle - 90) * Math.PI / 180)}% ${50 + 50 * Math.sin((startAngle - 90) * Math.PI / 180)}%, ${50 + 50 * Math.cos((startAngle + degreesPerSegment - 90) * Math.PI / 180)}% ${50 + 50 * Math.sin((startAngle + degreesPerSegment - 90) * Math.PI / 180)}%)`,
                   transform: `rotate(${startAngle}deg)`,
@@ -214,7 +236,10 @@ export default function Spinner() {
 
       {/* Info */}
       <div className="mt-6 text-center text-sm text-gray-600">
-        <p>{eligibleMembers.length} eligible member{eligibleMembers.length !== 1 ? 's' : ''} available</p>
+        <p>
+          {allMembers.length} total member{allMembers.length !== 1 ? 's' : ''} • {' '}
+          {eligibleMembers.length} eligible
+        </p>
       </div>
     </div>
   );
