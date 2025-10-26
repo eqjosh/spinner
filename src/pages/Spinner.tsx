@@ -40,9 +40,15 @@ export default function Spinner() {
     const degreesPerSegment = 360 / allMembers.length;
     const extraSpins = 5 + Math.random() * 3;
 
-    // The pointer is at top (0 degrees), we want to rotate the wheel so the winner is at top
-    // Since segments start at -90 degrees, we need to adjust
-    const targetAngle = wheelIndex * degreesPerSegment + (degreesPerSegment / 2);
+    // Add random offset to avoid stopping on division lines
+    // Keep within central 60% of segment (avoid outer 20% on each side)
+    const randomOffset = (Math.random() - 0.5) * degreesPerSegment * 0.4;
+
+    // Segments start at -90 degrees. To align winner's center with pointer at top (0 degrees):
+    // We need to rotate the wheel so that the segment center ends up at 0 degrees
+    // Segment i's center is at: -90 + i * degreesPerSegment + degreesPerSegment/2
+    // To bring this to 0, we rotate by: 90 - i * degreesPerSegment - degreesPerSegment/2
+    const targetAngle = 90 - wheelIndex * degreesPerSegment - (degreesPerSegment / 2) + randomOffset;
     const finalRotation = 360 * extraSpins + targetAngle;
 
     setRotation(finalRotation);
@@ -125,9 +131,9 @@ export default function Spinner() {
       <h2 className="text-3xl font-bold text-gray-800 mb-8 text-center">Spin the Wheel</h2>
 
       {/* Responsive Layout: Desktop (side-by-side) vs Mobile (stacked) */}
-      <div className="flex flex-col lg:flex-row gap-8 items-start">
-        {/* Left Column: Wheel + Spin Button */}
-        <div className="flex flex-col items-center w-full lg:w-auto">
+      <div className="flex flex-col lg:flex-row gap-8">
+        {/* Left Column: Wheel + Spin Button - 50% width, centered content */}
+        <div className="flex flex-col items-center justify-center w-full lg:w-1/2">
           {/* Wheel Container */}
           <div className="relative w-96 h-96 mb-6">
             {/* Pointer - elevated and with shadow */}
@@ -234,8 +240,8 @@ export default function Spinner() {
           </div>
         </div>
 
-        {/* Right Column: Label + Winner */}
-        <div className="flex-1 w-full lg:max-w-md space-y-6">
+        {/* Right Column: Label + Winner - 50% width */}
+        <div className="w-full lg:w-1/2 space-y-6">
           {/* Label Input */}
           <div>
             <label htmlFor="spin-label" className="block text-lg font-medium text-gray-700 mb-3">
