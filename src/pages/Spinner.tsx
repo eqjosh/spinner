@@ -89,6 +89,7 @@ export default function Spinner() {
       setSpinning(false);
       spinTimeoutRef.current = null;
 
+      // Save to history
       const historyEntry: SpinHistory = {
         id: Date.now().toString(),
         memberId: selectedMember.id,
@@ -97,8 +98,19 @@ export default function Spinner() {
         label: label || undefined,
         canBeSelectedAgain: false,
       };
-      await firestoreService.addHistoryEntry(historyEntry);
 
+      try {
+        await firestoreService.addHistoryEntry(historyEntry);
+        console.log('History entry saved:', historyEntry);
+      } catch (error) {
+        console.error('Failed to save history entry:', error);
+        alert('Failed to save spin to history. Please check the console.');
+      }
+
+      // Clear label for next spin
+      setLabel('');
+
+      // Reload members to update eligibility
       loadMembers();
     }, 5000);
   };

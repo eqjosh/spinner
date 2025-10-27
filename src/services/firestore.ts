@@ -34,7 +34,10 @@ export const firestoreService = {
   async getTeam(): Promise<TeamMember[]> {
     try {
       const teamCol = getTeamCollection();
-      const snapshot = await getDocs(teamCol);
+      // IMPORTANT: Order by name to ensure consistent ordering across queries
+      // This prevents wheel segments from being misaligned with member indices
+      const q = query(teamCol, orderBy('name'));
+      const snapshot = await getDocs(q);
       return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as TeamMember));
     } catch (error) {
       console.error('Error getting team:', error);
