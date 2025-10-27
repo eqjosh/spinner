@@ -59,8 +59,11 @@ export default function Spinner() {
 
     // Calculate target angle for this segment
     // Segments start at -90 degrees (top). Segment i's center is at: -90 + i * degreesPerSegment + degreesPerSegment/2
-    // To bring segment center to pointer (top = 0°), we rotate: 90 - i * degreesPerSegment - degreesPerSegment/2
-    let targetAngle = 90 - wheelIndex * degreesPerSegment - (degreesPerSegment / 2) + randomOffset;
+    // Pointer is at -90 degrees. To align segment center with pointer:
+    // We want: segmentCenter + rotation = -90
+    // rotation = -90 - segmentCenter = -90 - (-90 + i * degreesPerSegment + degreesPerSegment/2)
+    // rotation = -i * degreesPerSegment - degreesPerSegment/2
+    let targetAngle = -wheelIndex * degreesPerSegment - (degreesPerSegment / 2) + randomOffset;
 
     // Normalize target angle to 0-360 range
     targetAngle = ((targetAngle % 360) + 360) % 360;
