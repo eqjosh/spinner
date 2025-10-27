@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { storageService } from '../services/storage';
+import { firestoreService } from '../services/firestore';
 import type { TeamMember } from '../types';
 
 export default function TeamAdmin() {
@@ -12,8 +12,8 @@ export default function TeamAdmin() {
     loadTeam();
   }, []);
 
-  const loadTeam = () => {
-    const data = storageService.getTeam();
+  const loadTeam = async () => {
+    const data = await firestoreService.getTeam();
     setTeam(data);
   };
 
@@ -33,7 +33,7 @@ export default function TeamAdmin() {
     setFormData({ name: '', photo: '' });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.name.trim()) {
       alert('Please enter a name');
       return;
@@ -46,9 +46,9 @@ export default function TeamAdmin() {
         photo: formData.photo || undefined,
         isActive: true,
       };
-      storageService.addTeamMember(newMember);
+      await firestoreService.addTeamMember(newMember);
     } else if (editingId) {
-      storageService.updateTeamMember(editingId, {
+      await firestoreService.updateTeamMember(editingId, {
         name: formData.name.trim(),
         photo: formData.photo || undefined,
       });
@@ -75,14 +75,14 @@ export default function TeamAdmin() {
     reader.readAsDataURL(file);
   };
 
-  const handleToggleActive = (id: string, currentStatus: boolean) => {
-    storageService.updateTeamMember(id, { isActive: !currentStatus });
+  const handleToggleActive = async (id: string, currentStatus: boolean) => {
+    await firestoreService.updateTeamMember(id, { isActive: !currentStatus });
     loadTeam();
   };
 
-  const handleDelete = (id: string, name: string) => {
+  const handleDelete = async (id: string, name: string) => {
     if (confirm(`Are you sure you want to delete ${name}?`)) {
-      storageService.deleteTeamMember(id);
+      await firestoreService.deleteTeamMember(id);
       loadTeam();
     }
   };

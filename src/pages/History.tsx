@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { storageService } from '../services/storage';
+import { firestoreService } from '../services/firestore';
 import type { SpinHistory } from '../types';
 
 export default function History() {
@@ -11,8 +11,8 @@ export default function History() {
     loadHistory();
   }, []);
 
-  const loadHistory = () => {
-    const data = storageService.getHistory();
+  const loadHistory = async () => {
+    const data = await firestoreService.getHistory();
     setHistory(data);
   };
 
@@ -21,8 +21,8 @@ export default function History() {
     setEditLabel(entry.label || '');
   };
 
-  const handleSaveLabel = (id: string) => {
-    storageService.updateHistoryEntry(id, { label: editLabel || undefined });
+  const handleSaveLabel = async (id: string) => {
+    await firestoreService.updateHistoryEntry(id, { label: editLabel || undefined });
     setEditingId(null);
     setEditLabel('');
     loadHistory();
@@ -33,8 +33,8 @@ export default function History() {
     setEditLabel('');
   };
 
-  const handleToggleEligibility = (entry: SpinHistory) => {
-    storageService.updateHistoryEntry(entry.id, {
+  const handleToggleEligibility = async (entry: SpinHistory) => {
+    await firestoreService.updateHistoryEntry(entry.id, {
       canBeSelectedAgain: !entry.canBeSelectedAgain,
     });
     loadHistory();

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { storageService } from '../services/storage';
+import { firestoreService } from '../services/firestore';
 import type { TeamMember, SpinHistory } from '../types';
 
 export default function Spinner() {
@@ -22,12 +22,12 @@ export default function Spinner() {
     };
   }, []);
 
-  const loadMembers = () => {
-    const team = storageService.getTeam();
+  const loadMembers = async () => {
+    const team = await firestoreService.getTeam();
     const activeMembers = team.filter(m => m.isActive);
     setAllMembers(activeMembers);
 
-    const eligible = storageService.getEligibleMembers();
+    const eligible = await firestoreService.getEligibleMembers();
     setEligibleMembers(eligible);
   };
 
@@ -84,7 +84,7 @@ export default function Spinner() {
     setRotation(finalRotation);
 
     // Store timeout ID for cleanup
-    spinTimeoutRef.current = setTimeout(() => {
+    spinTimeoutRef.current = setTimeout(async () => {
       setWinner(selectedMember);
       setSpinning(false);
       spinTimeoutRef.current = null;
@@ -97,7 +97,7 @@ export default function Spinner() {
         label: label || undefined,
         canBeSelectedAgain: false,
       };
-      storageService.addHistoryEntry(historyEntry);
+      await firestoreService.addHistoryEntry(historyEntry);
 
       loadMembers();
     }, 5000);

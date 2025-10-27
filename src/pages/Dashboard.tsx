@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { storageService } from '../services/storage';
+import { auth } from '../config/firebase';
 import Spinner from './Spinner';
 import History from './History';
 import TeamAdmin from './TeamAdmin';
@@ -12,10 +12,9 @@ type View = 'spinner' | 'history' | 'team';
 
 export default function Dashboard({ onLogout }: DashboardProps) {
   const [activeView, setActiveView] = useState<View>('spinner');
-  const auth = storageService.getAuth();
+  const user = auth.currentUser;
 
   const handleLogout = () => {
-    storageService.clearAuth();
     onLogout();
   };
 
@@ -26,7 +25,7 @@ export default function Dashboard({ onLogout }: DashboardProps) {
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-gray-800">Team Spinner</h1>
           <div className="flex items-center gap-4">
-            <span className="text-gray-600">Welcome, {auth.username}</span>
+            <span className="text-gray-600">Welcome, {user?.email}</span>
             <button
               onClick={handleLogout}
               className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"

@@ -5,8 +5,9 @@ A web application for randomly selecting team members with a roulette wheel inte
 ## Features
 
 ### 1. Login Screen
-- Simple authentication (demo mode - accepts any username/password)
-- Session persists in LocalStorage
+- Real Firebase Authentication with email/password
+- User registration and login
+- Session persists across devices and browsers
 
 ### 2. Spinner (Roulette Wheel)
 - Animated roulette wheel to randomly select team members
@@ -23,22 +24,25 @@ A web application for randomly selecting team members with a roulette wheel inte
 
 ### 4. Team Admin
 - Add, edit, and delete team members
-- Upload optional photos for each member (stored as base64 in LocalStorage)
+- Upload optional photos for each member (stored as base64 in Firestore)
 - Temporarily deactivate/reactivate members (e.g., for vacation)
 - Visual cards showing member status
+- Each user manages their own private team data
 
 ## Tech Stack
 
 - **Framework**: React 18 with TypeScript
 - **Build Tool**: Vite
-- **Styling**: Tailwind CSS
-- **Storage**: LocalStorage (all data persists in the browser)
-- **Deployment**: Static site ready for AWS S3
+- **Styling**: Tailwind CSS v3
+- **Authentication**: Firebase Authentication (Email/Password)
+- **Database**: Cloud Firestore (NoSQL database)
+- **Deployment**: Netlify (or AWS S3)
 
 ## Local Development
 
 ### Prerequisites
 - Node.js 18+ and npm
+- A Firebase project (see [Firebase Setup Guide](FIREBASE_SETUP.md))
 
 ### Setup
 
@@ -47,12 +51,16 @@ A web application for randomly selecting team members with a roulette wheel inte
 npm install
 ```
 
-2. Run development server:
+2. Configure Firebase:
+   - Follow the [Firebase Setup Guide](FIREBASE_SETUP.md) to create your Firebase project
+   - Update `src/config/firebase.config.ts` with your Firebase credentials
+
+3. Run development server:
 ```bash
 npm run dev
 ```
 
-3. Build for production:
+4. Build for production:
 ```bash
 npm run build
 ```
@@ -169,28 +177,61 @@ For HTTPS and better performance:
 3. Add custom domain to CloudFront distribution
 4. Create Route 53 A record pointing to CloudFront
 
+## Deployment to Netlify (Recommended)
+
+Netlify offers automatic deployments from Git with HTTPS and continuous deployment.
+
+### Setup
+
+1. Push your code to GitHub (or GitLab/Bitbucket)
+
+2. Go to [Netlify](https://www.netlify.com/) and sign up/login
+
+3. Click "Add new site" > "Import an existing project"
+
+4. Choose your Git provider and repository
+
+5. Configure build settings:
+   - **Build command**: `npm run build`
+   - **Publish directory**: `dist`
+
+6. Click "Deploy site"
+
+### After Deployment
+
+- Netlify will provide a URL like `https://your-site.netlify.app`
+- Every push to your main branch will trigger automatic redeployment
+- HTTPS is enabled by default
+- You can add a custom domain in Site settings
+
+**Important**: Make sure your Firebase configuration is set up in `src/config/firebase.config.ts` before deploying!
+
 ## Data Storage
 
-All data is stored in the browser's LocalStorage:
-- Authentication state
-- Team members (including base64-encoded photos)
-- Spin history
+All data is stored in Firebase Cloud Firestore:
+- **Authentication**: Firebase Authentication with email/password
+- **Team members**: Stored in user-specific subcollection (including base64-encoded photos)
+- **Spin history**: Stored in user-specific subcollection
 
-**Note**: Data is per-browser and will be lost if:
-- Browser cache is cleared
-- Using a different browser
-- Using incognito/private mode
+**Benefits**:
+- Data persists across all devices and browsers
+- Secure authentication with Firebase
+- Each user has their own private data
+- Data survives browser cache clears
+- Access your team from anywhere with your login
 
-For production use, consider adding a backend with database storage.
+**Security**:
+- Firestore security rules ensure users can only access their own data
+- Firebase Authentication manages secure login sessions
 
 ## Future Enhancements
 
-- Real authentication with backend
-- Database storage (instead of LocalStorage)
-- Export/import team data
+- Export/import team data (CSV/JSON)
 - Email notifications when selected
-- Statistics and analytics
-- Mobile app version
+- Statistics and analytics dashboard
+- Team sharing and collaboration features
+- Mobile app version (React Native)
+- Customizable wheel colors and themes
 
 ## License
 
