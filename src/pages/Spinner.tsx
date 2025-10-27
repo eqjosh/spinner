@@ -85,26 +85,44 @@ export default function Spinner() {
 
     // Store timeout ID for cleanup
     spinTimeoutRef.current = setTimeout(async () => {
-      setWinner(selectedMember);
       setSpinning(false);
       spinTimeoutRef.current = null;
 
-      // Save to history
-      const historyEntry: SpinHistory = {
+      // DETERMINISTIC WINNER DETECTION
+      // Instead of using the pre-selected member, calculate which segment
+      // is actually under the pointer after rotation completes
+      const actualWinner = getWinnerFromRotation(finalRotation, allMembers);
+
+      console.log('Pre-selected member:', selectedMember.name);
+      console.log('Actual winner from rotation:', actualWinner.name);
+      console.log('Final rotation:', finalRotation);
+      console.log('Normalized rotation:', ((finalRotation % 360) + 360) % 360);
+
+      setWinner(actualWinner);
+
+      // Save to history - build object without undefined fields
+      const historyEntry: Partial<SpinHistory> = {
         id: Date.now().toString(),
-        memberId: selectedMember.id,
-        memberName: selectedMember.name,
+        memberId: actualWinner.id,
+        memberName: actualWinner.name,
         date: new Date().toISOString(),
-        label: label || undefined,
         canBeSelectedAgain: false,
       };
 
+      // Only add label if it has a value
+      if (label && label.trim()) {
+        historyEntry.label = label.trim();
+      }
+
       try {
-        await firestoreService.addHistoryEntry(historyEntry);
-        console.log('History entry saved:', historyEntry);
-      } catch (error) {
+        await firestoreService.addHistoryEntry(historyEntry as SpinHistory);
+        console.log('History entry saved successfully:', historyEntry);
+      } catch (error: any) {
         console.error('Failed to save history entry:', error);
-        alert('Failed to save spin to history. Please check the console.');
+        console.error('Error code:', error?.code);
+        console.error('Error message:', error?.message);
+        console.error('Full error:', JSON.stringify(error, null, 2));
+        alert(`Failed to save spin to history: ${error?.message || 'Unknown error'}`);
       }
 
       // Clear label for next spin
@@ -113,6 +131,48 @@ export default function Spinner() {
       // Reload members to update eligibility
       loadMembers();
     }, 5000);
+  };
+
+  // Helper function to determine which segment is under the pointer after rotation
+  const getWinnerFromRotation = (rotation: number, members: TeamMember[]): TeamMember => {
+    const degreesPerSegment = 360 / members.length;
+
+    // Normalize rotation to 0-360 range
+    const normalizedRotation = ((rotation % 360) + 360) % 360;
+
+    // The pointer is at the top (12 o'clock = -90 degrees in SVG = 270 degrees positive)
+    // Each segment's center is offset by degreesPerSegment/2 from its starting edge
+    //
+    // In the original (unrotated) state:
+    // - Segment i starts at: -90 + i * degreesPerSegment
+    // - Segment i's center is at: -90 + i * degreesPerSegment + degreesPerSegment/2
+    //
+    // After rotating by R degrees, segment i's center is at:
+    // - (-90 + i * degreesPerSegment + degreesPerSegment/2 + R) mod 360
+    //
+    // We want to find which segment has its center at the pointer (-90 degrees):
+    // - (-90 + i * degreesPerSegment + degreesPerSegment/2 + R) ≡ -90 (mod 360)
+    // - i * degreesPerSegment + degreesPerSegment/2 + R ≡ 0 (mod 360)
+    // - i ≡ (-R - degreesPerSegment/2) / degreesPerSegment (mod members.length)
+    //
+    // Converting to positive modulo:
+    // - i = (members.length - floor((R + degreesPerSegment/2) / degreesPerSegment)) % members.length
+
+    const adjustedRotation = normalizedRotation + degreesPerSegment / 2;
+    const segmentIndex = (members.length - Math.floor(adjustedRotation / degreesPerSegment)) % members.length;
+
+    console.log('=== Winner Detection Debug ===');
+    console.log('Total members:', members.length);
+    console.log('Degrees per segment:', degreesPerSegment);
+    console.log('Final rotation:', rotation);
+    console.log('Normalized rotation:', normalizedRotation);
+    console.log('Adjusted rotation (with center offset):', adjustedRotation);
+    console.log('Calculated segment index:', segmentIndex);
+    console.log('Member at that index:', members[segmentIndex]?.name);
+    console.log('All members in order:', members.map(m => m.name).join(', '));
+    console.log('============================');
+
+    return members[segmentIndex];
   };
 
   const getPhotoSize = (memberCount: number) => {
