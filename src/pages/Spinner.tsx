@@ -2,12 +2,16 @@ import { useState, useEffect, useRef } from 'react';
 import { firestoreService } from '../services/firestore';
 import type { TeamMember, SpinHistory } from '../types';
 
+// Fixed roulette wheel configuration
+const TOTAL_SPACES = 18;
+const DEGREES_PER_SPACE = 360 / TOTAL_SPACES; // 20 degrees per space
+
 export default function Spinner() {
   const [label, setLabel] = useState('');
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
-  const [allMembers, setAllMembers] = useState<TeamMember[]>([]);
   const [eligibleMembers, setEligibleMembers] = useState<TeamMember[]>([]);
+  const [spaceAssignments, setSpaceAssignments] = useState<(TeamMember | null)[]>([]);
   const [winner, setWinner] = useState<TeamMember | null>(null);
   const spinTimeoutRef = useRef<number | null>(null);
 
@@ -23,12 +27,30 @@ export default function Spinner() {
   }, []);
 
   const loadMembers = async () => {
-    const team = await firestoreService.getTeam();
-    const activeMembers = team.filter(m => m.isActive);
-    setAllMembers(activeMembers);
-
     const eligible = await firestoreService.getEligibleMembers();
     setEligibleMembers(eligible);
+
+    // Assign members to the 18 fixed spaces
+    const assignments = assignMembersToSpaces(eligible);
+    setSpaceAssignments(assignments);
+  };
+
+  // Distribute eligible members across 18 fixed spaces
+  const assignMembersToSpaces = (members: TeamMember[]): (TeamMember | null)[] => {
+    const spaces: (TeamMember | null)[] = new Array(TOTAL_SPACES).fill(null);
+
+    if (members.length === 0) {
+      return spaces;
+    }
+
+    // Distribute members evenly across spaces
+    // If fewer members than spaces, they'll repeat to fill the wheel
+    // If more members than spaces, we'll cycle through them
+    for (let i = 0; i < TOTAL_SPACES; i++) {
+      spaces[i] = members[i % members.length];
+    }
+
+    return spaces;
   };
 
   const handleSpin = () => {
@@ -42,44 +64,52 @@ export default function Spinner() {
     setWinner(null);
     setSpinning(true);
 
-    // Select random winner from eligible members
-    const randomIndex = Math.floor(Math.random() * eligibleMembers.length);
-    const selectedMember = eligibleMembers[randomIndex];
+    // Select a random space (0-17) from spaces that have eligible members
+    const eligibleSpaces = spaceAssignments
+      .map((member, index) => ({ member, index }))
+      .filter(s => s.member !== null);
 
-    // Find the index in allMembers array
-    const wheelIndex = allMembers.findIndex(m => m.id === selectedMember.id);
+    const randomSpace = eligibleSpaces[Math.floor(Math.random() * eligibleSpaces.length)];
+    const targetSpaceIndex = randomSpace.index;
 
-    // Calculate precise rotation to align pointer with center of segment
-    const degreesPerSegment = 360 / allMembers.length;
-    const extraSpins = 5 + Math.random() * 3;
+    console.log('=== SPIN START ===');
+    console.log('Target space index:', targetSpaceIndex);
+    console.log('Target member:', randomSpace.member?.name);
 
-    // Add random offset to avoid stopping on division lines
-    // Keep within central 60% of segment (avoid outer 20% on each side)
-    const randomOffset = (Math.random() - 0.5) * degreesPerSegment * 0.4;
+    // Calculate rotation to land on target space
+    // Pointer is at top (12 o'clock = -90 degrees in SVG = 270 degrees standard)
+    // Spaces are numbered 0-17 clockwise starting from top
+    // Space i's center is at: -90 + i * 20 + 10 = -80 + i * 20
 
-    // Calculate target angle for this segment
-    // Segments start at -90 degrees (top). Segment i's center is at: -90 + i * degreesPerSegment + degreesPerSegment/2
-    // Pointer is at -90 degrees. To align segment center with pointer:
-    // We want: segmentCenter + rotation = -90
-    // rotation = -90 - segmentCenter = -90 - (-90 + i * degreesPerSegment + degreesPerSegment/2)
-    // rotation = -i * degreesPerSegment - degreesPerSegment/2
-    let targetAngle = -wheelIndex * degreesPerSegment - (degreesPerSegment / 2) + randomOffset;
+    const extraSpins = 5 + Math.random() * 3; // 5-8 full rotations
+    const randomOffset = (Math.random() - 0.5) * DEGREES_PER_SPACE * 0.6; // Stay within center 60% of space
 
-    // Normalize target angle to 0-360 range
+    // Target angle for space center to align with pointer at -90 degrees
+    // We want: spaceCenterAngle + rotation = -90
+    // spaceCenterAngle = -90 + targetSpaceIndex * 20 + 10
+    // rotation = -90 - spaceCenterAngle = -90 - (-90 + targetSpaceIndex * 20 + 10)
+    // rotation = -targetSpaceIndex * 20 - 10
+    let targetAngle = -targetSpaceIndex * DEGREES_PER_SPACE - (DEGREES_PER_SPACE / 2) + randomOffset;
+
+    // Normalize to 0-360 range
     targetAngle = ((targetAngle % 360) + 360) % 360;
 
-    // Calculate current wheel position (normalized to 0-360)
+    // Calculate current wheel position
     const currentAngle = ((rotation % 360) + 360) % 360;
 
-    // Calculate rotation needed from current position to target
-    // Always go forward (clockwise) for full effect
+    // Calculate rotation needed (always go forward)
     let rotationNeeded = targetAngle - currentAngle;
     if (rotationNeeded < 0) {
       rotationNeeded += 360;
     }
 
-    // Final rotation: current + multiple spins + rotation to target
+    // Final rotation
     const finalRotation = rotation + (360 * extraSpins) + rotationNeeded;
+
+    console.log('Current angle:', currentAngle);
+    console.log('Target angle:', targetAngle);
+    console.log('Rotation needed:', rotationNeeded);
+    console.log('Final rotation:', finalRotation);
 
     setRotation(finalRotation);
 
@@ -88,15 +118,25 @@ export default function Spinner() {
       setSpinning(false);
       spinTimeoutRef.current = null;
 
-      // DETERMINISTIC WINNER DETECTION
-      // Instead of using the pre-selected member, calculate which segment
-      // is actually under the pointer after rotation completes
-      const actualWinner = getWinnerFromRotation(finalRotation, allMembers);
+      // DETERMINISTIC: Calculate which space we actually landed on
+      const landedSpaceIndex = getSpaceFromRotation(finalRotation);
+      const actualWinner = spaceAssignments[landedSpaceIndex];
 
-      console.log('Pre-selected member:', selectedMember.name);
-      console.log('Actual winner from rotation:', actualWinner.name);
+      console.log('=== SPIN RESULT ===');
       console.log('Final rotation:', finalRotation);
       console.log('Normalized rotation:', ((finalRotation % 360) + 360) % 360);
+      console.log('Landed on space index:', landedSpaceIndex);
+      console.log('Actual winner:', actualWinner?.name);
+      console.log('Expected winner:', randomSpace.member?.name);
+      console.log('Match:', actualWinner?.id === randomSpace.member?.id ? '✓' : '✗');
+      console.log('==================');
+
+      if (!actualWinner) {
+        console.error('ERROR: Landed on empty space!');
+        alert('Error: Landed on empty space. Please try again.');
+        setSpinning(false);
+        return;
+      }
 
       setWinner(actualWinner);
 
@@ -116,12 +156,11 @@ export default function Spinner() {
 
       try {
         await firestoreService.addHistoryEntry(historyEntry as SpinHistory);
-        console.log('History entry saved successfully:', historyEntry);
+        console.log('✓ History entry saved successfully');
       } catch (error: any) {
-        console.error('Failed to save history entry:', error);
+        console.error('✗ Failed to save history entry:', error);
         console.error('Error code:', error?.code);
         console.error('Error message:', error?.message);
-        console.error('Full error:', JSON.stringify(error, null, 2));
         alert(`Failed to save spin to history: ${error?.message || 'Unknown error'}`);
       }
 
@@ -133,60 +172,28 @@ export default function Spinner() {
     }, 5000);
   };
 
-  // Helper function to determine which segment is under the pointer after rotation
-  const getWinnerFromRotation = (rotation: number, members: TeamMember[]): TeamMember => {
-    const degreesPerSegment = 360 / members.length;
-
-    // Normalize rotation to 0-360 range
+  // Deterministic function: given final rotation, which space (0-17) is under the pointer?
+  const getSpaceFromRotation = (rotation: number): number => {
+    // Normalize rotation to 0-360
     const normalizedRotation = ((rotation % 360) + 360) % 360;
 
-    // The pointer is at the top (12 o'clock = -90 degrees in SVG = 270 degrees positive)
-    // Each segment's center is offset by degreesPerSegment/2 from its starting edge
-    //
-    // In the original (unrotated) state:
-    // - Segment i starts at: -90 + i * degreesPerSegment
-    // - Segment i's center is at: -90 + i * degreesPerSegment + degreesPerSegment/2
-    //
-    // After rotating by R degrees, segment i's center is at:
-    // - (-90 + i * degreesPerSegment + degreesPerSegment/2 + R) mod 360
-    //
-    // We want to find which segment has its center at the pointer (-90 degrees):
-    // - (-90 + i * degreesPerSegment + degreesPerSegment/2 + R) ≡ -90 (mod 360)
-    // - i * degreesPerSegment + degreesPerSegment/2 + R ≡ 0 (mod 360)
-    // - i ≡ (-R - degreesPerSegment/2) / degreesPerSegment (mod members.length)
-    //
-    // Converting to positive modulo:
-    // - i = (members.length - floor((R + degreesPerSegment/2) / degreesPerSegment)) % members.length
+    // Pointer is at top (-90 degrees in SVG)
+    // After rotating by R degrees, space i is under pointer when:
+    // (-90 + i * 20 + 10 + R) ≡ -90 (mod 360)
+    // i * 20 + 10 + R ≡ 0 (mod 360)
+    // i = floor((-R - 10) / 20) mod 18
+    // Converting to positive: i = (18 - floor((R + 10) / 20)) % 18
 
-    const adjustedRotation = normalizedRotation + degreesPerSegment / 2;
-    const segmentIndex = (members.length - Math.floor(adjustedRotation / degreesPerSegment)) % members.length;
+    const adjustedRotation = normalizedRotation + DEGREES_PER_SPACE / 2;
+    const spaceIndex = (TOTAL_SPACES - Math.floor(adjustedRotation / DEGREES_PER_SPACE)) % TOTAL_SPACES;
 
-    console.log('=== Winner Detection Debug ===');
-    console.log('Total members:', members.length);
-    console.log('Degrees per segment:', degreesPerSegment);
-    console.log('Final rotation:', rotation);
-    console.log('Normalized rotation:', normalizedRotation);
-    console.log('Adjusted rotation (with center offset):', adjustedRotation);
-    console.log('Calculated segment index:', segmentIndex);
-    console.log('Member at that index:', members[segmentIndex]?.name);
-    console.log('All members in order:', members.map(m => m.name).join(', '));
-    console.log('============================');
-
-    return members[segmentIndex];
+    return spaceIndex;
   };
 
-  const getPhotoSize = (memberCount: number) => {
-    if (memberCount <= 3) return 100;
-    if (memberCount <= 5) return 80;
-    if (memberCount <= 8) return 60;
-    return 50;
-  };
-
-  // Helper to create SVG path for pie slice
-  const createSlicePath = (index: number, total: number) => {
-    const angle = 360 / total;
-    const startAngle = index * angle - 90; // Start at top
-    const endAngle = startAngle + angle;
+  // Helper to create SVG path for pie slice (fixed 18 spaces)
+  const createSlicePath = (index: number) => {
+    const startAngle = index * DEGREES_PER_SPACE - 90; // Start at top
+    const endAngle = startAngle + DEGREES_PER_SPACE;
 
     const startRad = (startAngle * Math.PI) / 180;
     const endRad = (endAngle * Math.PI) / 180;
@@ -196,22 +203,10 @@ export default function Spinner() {
     const x2 = 192 + 192 * Math.cos(endRad);
     const y2 = 192 + 192 * Math.sin(endRad);
 
-    const largeArc = angle > 180 ? 1 : 0;
+    const largeArc = DEGREES_PER_SPACE > 180 ? 1 : 0;
 
     return `M 192 192 L ${x1} ${y1} A 192 192 0 ${largeArc} 1 ${x2} ${y2} Z`;
   };
-
-  if (allMembers.length === 0) {
-    return (
-      <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">No Team Members</h2>
-        <p className="text-gray-600 mb-4">There are no active team members.</p>
-        <p className="text-blue-600 font-medium">
-          Go to Team Admin to add or activate team members.
-        </p>
-      </div>
-    );
-  }
 
   if (eligibleMembers.length === 0) {
     return (
@@ -227,7 +222,7 @@ export default function Spinner() {
     );
   }
 
-  const photoSize = getPhotoSize(allMembers.length);
+  const photoSize = 50; // Fixed size for 18 spaces
   const colors = ['#ef4444', '#3b82f6', '#22c55e', '#eab308', '#a855f7', '#ec4899', '#6366f1', '#f97316'];
 
   return (
@@ -257,27 +252,27 @@ export default function Spinner() {
                 {/* Outer border circle */}
                 <circle cx="192" cy="192" r="192" fill="none" stroke="#1f2937" strokeWidth="8" />
 
-                {/* Segments */}
-                {allMembers.map((member, index) => {
-                  const isEligible = eligibleMembers.some(em => em.id === member.id);
+                {/* 18 Fixed Segments */}
+                {Array.from({ length: TOTAL_SPACES }).map((_, index) => {
                   const color = colors[index % colors.length];
 
                   return (
-                    <g key={member.id}>
+                    <g key={`space-${index}`}>
                       <path
-                        d={createSlicePath(index, allMembers.length)}
+                        d={createSlicePath(index)}
                         fill={color}
-                        opacity={isEligible ? 1 : 0.5}
+                        opacity={1}
                       />
                     </g>
                   );
                 })}
               </svg>
 
-              {/* Photos overlaid on wheel */}
-              {allMembers.map((member, index) => {
-                const degreesPerSegment = 360 / allMembers.length;
-                const angle = index * degreesPerSegment + (degreesPerSegment / 2); // Center of segment
+              {/* Photos overlaid on wheel - one per space */}
+              {spaceAssignments.map((member, index) => {
+                if (!member) return null;
+
+                const angle = index * DEGREES_PER_SPACE + (DEGREES_PER_SPACE / 2); // Center of space
                 const angleRad = ((angle - 90) * Math.PI) / 180; // -90 to start at top
 
                 // Position at 60% of radius from center
@@ -287,7 +282,7 @@ export default function Spinner() {
 
                 return (
                   <div
-                    key={`photo-${member.id}`}
+                    key={`space-photo-${index}-${member.id}`}
                     className="absolute"
                     style={{
                       left: `${x}px`,
@@ -339,7 +334,7 @@ export default function Spinner() {
           {/* Info */}
           <div className="mt-4 text-center text-sm text-gray-600">
             <p>
-              {allMembers.length} total • {eligibleMembers.length} eligible
+              18 spaces • {eligibleMembers.length} eligible members
             </p>
           </div>
         </div>
