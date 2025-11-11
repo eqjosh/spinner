@@ -13,6 +13,8 @@ export default function Spinner() {
   const [eligibleMembers, setEligibleMembers] = useState<TeamMember[]>([]);
   const [spaceAssignments, setSpaceAssignments] = useState<(TeamMember | null)[]>([]);
   const [winner, setWinner] = useState<TeamMember | null>(null);
+  const [landedSpace, setLandedSpace] = useState<number | null>(null);
+  const [debugInfo, setDebugInfo] = useState<string>('');
   const spinTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -62,6 +64,8 @@ export default function Spinner() {
     }
 
     setWinner(null);
+    setLandedSpace(null);
+    setDebugInfo('');
     setSpinning(true);
 
     // Select a random space (0-17) from spaces that have eligible members
@@ -72,6 +76,7 @@ export default function Spinner() {
     const randomSpace = eligibleSpaces[Math.floor(Math.random() * eligibleSpaces.length)];
     const targetSpaceIndex = randomSpace.index;
 
+    setDebugInfo(`Targeting Space #${targetSpaceIndex} (${randomSpace.member?.name})`);
     console.log('=== SPIN START ===');
     console.log('Target space index:', targetSpaceIndex);
     console.log('Target member:', randomSpace.member?.name);
@@ -122,13 +127,19 @@ export default function Spinner() {
       const landedSpaceIndex = getSpaceFromRotation(finalRotation);
       const actualWinner = spaceAssignments[landedSpaceIndex];
 
+      const match = actualWinner?.id === randomSpace.member?.id;
+      const debugText = `Landed on Space #${landedSpaceIndex} | Target was #${targetSpaceIndex} | ${match ? '✓ MATCH' : '✗ MISMATCH'}`;
+
+      setLandedSpace(landedSpaceIndex);
+      setDebugInfo(debugText);
+
       console.log('=== SPIN RESULT ===');
       console.log('Final rotation:', finalRotation);
       console.log('Normalized rotation:', ((finalRotation % 360) + 360) % 360);
       console.log('Landed on space index:', landedSpaceIndex);
       console.log('Actual winner:', actualWinner?.name);
       console.log('Expected winner:', randomSpace.member?.name);
-      console.log('Match:', actualWinner?.id === randomSpace.member?.id ? '✓' : '✗');
+      console.log('Match:', match ? '✓' : '✗');
       console.log('==================');
 
       if (!actualWinner) {
@@ -268,6 +279,33 @@ export default function Spinner() {
                 })}
               </svg>
 
+              {/* Space numbers - outer ring */}
+              {Array.from({ length: TOTAL_SPACES }).map((_, index) => {
+                const angle = index * DEGREES_PER_SPACE + (DEGREES_PER_SPACE / 2);
+                const angleRad = ((angle - 90) * Math.PI) / 180;
+
+                // Position at 85% of radius (outer edge)
+                const radius = 192 * 0.85;
+                const x = 192 + radius * Math.cos(angleRad);
+                const y = 192 + radius * Math.sin(angleRad);
+
+                return (
+                  <div
+                    key={`space-num-${index}`}
+                    className="absolute"
+                    style={{
+                      left: `${x}px`,
+                      top: `${y}px`,
+                      transform: 'translate(-50%, -50%)',
+                    }}
+                  >
+                    <div className="w-8 h-8 rounded-full bg-white border-2 border-gray-800 flex items-center justify-center shadow-lg">
+                      <span className="text-gray-900 font-bold text-sm">{index}</span>
+                    </div>
+                  </div>
+                );
+              })}
+
               {/* Photos overlaid on wheel - one per space */}
               {spaceAssignments.map((member, index) => {
                 if (!member) return null;
@@ -275,8 +313,8 @@ export default function Spinner() {
                 const angle = index * DEGREES_PER_SPACE + (DEGREES_PER_SPACE / 2); // Center of space
                 const angleRad = ((angle - 90) * Math.PI) / 180; // -90 to start at top
 
-                // Position at 60% of radius from center
-                const radius = 192 * 0.6;
+                // Position at 50% of radius from center (moved inward to make room for numbers)
+                const radius = 192 * 0.5;
                 const x = 192 + radius * Math.cos(angleRad);
                 const y = 192 + radius * Math.sin(angleRad);
 
@@ -337,6 +375,13 @@ export default function Spinner() {
               18 spaces • {eligibleMembers.length} eligible members
             </p>
           </div>
+
+          {/* Debug Info */}
+          {debugInfo && (
+            <div className="mt-4 p-3 bg-gray-100 border border-gray-300 rounded-lg text-center">
+              <p className="text-sm font-mono text-gray-700">{debugInfo}</p>
+            </div>
+          )}
         </div>
 
         {/* Right Column: Label + Winner - 50% width */}
@@ -359,23 +404,39 @@ export default function Spinner() {
 
           {/* Winner Display */}
           {winner && !spinning && (
-            <div className="p-6 bg-green-100 border-2 border-green-500 rounded-lg animate-pulse">
-              <h3 className="text-2xl font-bold text-green-800 mb-3 text-center">Winner!</h3>
-              <div className="flex items-center justify-center gap-4">
-                {winner.photo ? (
-                  <img
-                    src={winner.photo}
-                    alt={winner.name}
-                    className="w-20 h-20 rounded-full object-cover border-4 border-green-600"
-                  />
-                ) : (
-                  <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center border-4 border-green-600">
-                    <span className="text-green-700 font-bold text-3xl">
-                      {winner.name.charAt(0).toUpperCase()}
-                    </span>
-                  </div>
+            <div className="space-y-4">
+              <div className="p-6 bg-green-100 border-2 border-green-500 rounded-lg animate-pulse">
+                <h3 className="text-2xl font-bold text-green-800 mb-3 text-center">Winner!</h3>
+                <div className="flex items-center justify-center gap-4">
+                  {winner.photo ? (
+                    <img
+                      src={winner.photo}
+                      alt={winner.name}
+                      className="w-20 h-20 rounded-full object-cover border-4 border-green-600"
+                    />
+                  ) : (
+                    <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center border-4 border-green-600">
+                      <span className="text-green-700 font-bold text-3xl">
+                        {winner.name.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                  )}
+                  <p className="text-3xl font-bold text-green-900">{winner.name}</p>
+                </div>
+                {landedSpace !== null && (
+                  <p className="text-center mt-3 text-lg text-green-700 font-semibold">
+                    Landed on Space #{landedSpace}
+                  </p>
                 )}
-                <p className="text-3xl font-bold text-green-900">{winner.name}</p>
+              </div>
+
+              {/* Debug visualization */}
+              <div className="p-4 bg-blue-50 border border-blue-300 rounded-lg">
+                <h4 className="font-bold text-blue-900 mb-2">Debug Info:</h4>
+                <p className="text-sm text-blue-800 font-mono">{debugInfo}</p>
+                <p className="text-xs text-blue-600 mt-2">
+                  Look at the wheel: Does the arrow point to space #{landedSpace}?
+                </p>
               </div>
             </div>
           )}
