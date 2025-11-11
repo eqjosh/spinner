@@ -178,8 +178,10 @@ export default function Spinner() {
       // Clear label for next spin
       setLabel('');
 
-      // Reload members to update eligibility
-      loadMembers();
+      // NOTE: Do NOT reload members here! This would reassign everyone to different spaces
+      // and cause the photos to shift. Space assignments must remain stable during the session.
+      // The eligibility was already calculated when the page loaded.
+      // User can refresh the page to get updated eligibility after 30 days pass.
     }, 5000);
   };
 
