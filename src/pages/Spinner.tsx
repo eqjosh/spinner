@@ -191,14 +191,18 @@ export default function Spinner() {
     const normalizedRotation = ((rotation % 360) + 360) % 360;
 
     // Pointer is at top (-90 degrees in SVG)
-    // After rotating by R degrees, space i is under pointer when:
-    // (-90 + i * 20 + 10 + R) ≡ -90 (mod 360)
-    // i * 20 + 10 + R ≡ 0 (mod 360)
-    // i = floor((-R - 10) / 20) mod 18
-    // Converting to positive: i = (18 - floor((R + 10) / 20)) % 18
+    // Space i spans from (i*20 - 90) to ((i+1)*20 - 90) degrees
+    // After rotating by R degrees, space i spans from (i*20 - 90 + R) to ((i+1)*20 - 90 + R)
+    //
+    // We need to find which space CONTAINS the pointer at -90 degrees:
+    // i*20 - 90 + R <= -90 < (i+1)*20 - 90 + R
+    // i*20 + R <= 0 < (i+1)*20 + R
+    // i <= -R/20 < i+1
+    //
+    // Therefore: i = floor(-R/20) = -ceil(R/20)
+    // In positive modulo: i = (18 - ceil(R/20)) % 18
 
-    const adjustedRotation = normalizedRotation + DEGREES_PER_SPACE / 2;
-    const spaceIndex = (TOTAL_SPACES - Math.floor(adjustedRotation / DEGREES_PER_SPACE)) % TOTAL_SPACES;
+    const spaceIndex = (TOTAL_SPACES - Math.ceil(normalizedRotation / DEGREES_PER_SPACE)) % TOTAL_SPACES;
 
     return spaceIndex;
   };
