@@ -113,6 +113,24 @@ export const firestoreService = {
     }
   },
 
+  async deleteAllHistory(): Promise<void> {
+    try {
+      const historyCol = getHistoryCollection();
+      const snapshot = await getDocs(historyCol);
+
+      // Delete all history entries
+      const deletePromises = snapshot.docs.map(docSnapshot =>
+        deleteDoc(doc(historyCol, docSnapshot.id))
+      );
+
+      await Promise.all(deletePromises);
+      console.log(`Deleted ${snapshot.docs.length} history entries`);
+    } catch (error) {
+      console.error('Error deleting all history:', error);
+      throw error;
+    }
+  },
+
   // Utility methods
   async getEligibleMembers(): Promise<TeamMember[]> {
     try {

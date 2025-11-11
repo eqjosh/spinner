@@ -13,8 +13,6 @@ export default function Spinner() {
   const [eligibleMembers, setEligibleMembers] = useState<TeamMember[]>([]);
   const [spaceAssignments, setSpaceAssignments] = useState<(TeamMember | null)[]>([]);
   const [winner, setWinner] = useState<TeamMember | null>(null);
-  const [landedSpace, setLandedSpace] = useState<number | null>(null);
-  const [debugInfo, setDebugInfo] = useState<string>('');
   const spinTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -64,8 +62,6 @@ export default function Spinner() {
     }
 
     setWinner(null);
-    setLandedSpace(null);
-    setDebugInfo('');
     setSpinning(true);
 
     // Select a random space (0-17) from spaces that have eligible members
@@ -76,7 +72,6 @@ export default function Spinner() {
     const randomSpace = eligibleSpaces[Math.floor(Math.random() * eligibleSpaces.length)];
     const targetSpaceIndex = randomSpace.index;
 
-    setDebugInfo(`Targeting Space #${targetSpaceIndex} (${randomSpace.member?.name})`);
     console.log('=== SPIN START ===');
     console.log('Target space index:', targetSpaceIndex);
     console.log('Target member:', randomSpace.member?.name);
@@ -87,7 +82,12 @@ export default function Spinner() {
     // Space i's center is at: -90 + i * 20 + 10 = -80 + i * 20
 
     const extraSpins = 5 + Math.random() * 3; // 5-8 full rotations
-    const randomOffset = (Math.random() - 0.5) * DEGREES_PER_SPACE * 0.6; // Stay within center 60% of space
+
+    // Add random offset to avoid stopping on division lines
+    // Stay at least 3 degrees away from edges (space is 20 degrees, so stay within 14 degree range)
+    // This means: offset range is -7 to +7 degrees from center
+    const maxOffset = (DEGREES_PER_SPACE / 2) - 3; // 10 - 3 = 7 degrees
+    const randomOffset = (Math.random() - 0.5) * 2 * maxOffset; // -7 to +7
 
     // Target angle for space center to align with pointer at -90 degrees
     // We want: spaceCenterAngle + rotation = -90
@@ -128,10 +128,6 @@ export default function Spinner() {
       const actualWinner = spaceAssignments[landedSpaceIndex];
 
       const match = actualWinner?.id === randomSpace.member?.id;
-      const debugText = `Landed on Space #${landedSpaceIndex} | Target was #${targetSpaceIndex} | ${match ? '✓ MATCH' : '✗ MISMATCH'}`;
-
-      setLandedSpace(landedSpaceIndex);
-      setDebugInfo(debugText);
 
       console.log('=== SPIN RESULT ===');
       console.log('Final rotation:', finalRotation);
@@ -178,10 +174,12 @@ export default function Spinner() {
       // Clear label for next spin
       setLabel('');
 
-      // NOTE: Do NOT reload members here! This would reassign everyone to different spaces
-      // and cause the photos to shift. Space assignments must remain stable during the session.
-      // The eligibility was already calculated when the page loaded.
-      // User can refresh the page to get updated eligibility after 30 days pass.
+      // Reload eligible members to update the wheel
+      // This will cause photos to shift, but that's correct:
+      // - The winner just became ineligible
+      // - They should be removed from all their spaces on the wheel
+      // - Remaining eligible members redistribute across the 18 spaces
+      await loadMembers();
     }, 5000);
   };
 
@@ -324,6 +322,10 @@ export default function Spinner() {
                 const x = 192 + radius * Math.cos(angleRad);
                 const y = 192 + radius * Math.sin(angleRad);
 
+                // Rotate photo so it's upright when at the selection point (top)
+                // Negative of the wheel angle so photo stays oriented to screen
+                const photoRotation = -angle;
+
                 return (
                   <div
                     key={`space-photo-${index}-${member.id}`}
@@ -342,6 +344,7 @@ export default function Spinner() {
                         style={{
                           width: `${photoSize}px`,
                           height: `${photoSize}px`,
+                          transform: `rotate(${photoRotation}deg)`,
                         }}
                       />
                     ) : (
@@ -350,6 +353,7 @@ export default function Spinner() {
                         style={{
                           width: `${photoSize}px`,
                           height: `${photoSize}px`,
+                          transform: `rotate(${photoRotation}deg)`,
                         }}
                       >
                         <span
@@ -382,12 +386,12 @@ export default function Spinner() {
             </p>
           </div>
 
-          {/* Debug Info */}
-          {debugInfo && (
+          {/* Debug Info - Hidden in production */}
+          {/* {debugInfo && (
             <div className="mt-4 p-3 bg-gray-100 border border-gray-300 rounded-lg text-center">
               <p className="text-sm font-mono text-gray-700">{debugInfo}</p>
             </div>
-          )}
+          )} */}
         </div>
 
         {/* Right Column: Label + Winner - 50% width */}
@@ -429,20 +433,6 @@ export default function Spinner() {
                   )}
                   <p className="text-3xl font-bold text-green-900">{winner.name}</p>
                 </div>
-                {landedSpace !== null && (
-                  <p className="text-center mt-3 text-lg text-green-700 font-semibold">
-                    Landed on Space #{landedSpace}
-                  </p>
-                )}
-              </div>
-
-              {/* Debug visualization */}
-              <div className="p-4 bg-blue-50 border border-blue-300 rounded-lg">
-                <h4 className="font-bold text-blue-900 mb-2">Debug Info:</h4>
-                <p className="text-sm text-blue-800 font-mono">{debugInfo}</p>
-                <p className="text-xs text-blue-600 mt-2">
-                  Look at the wheel: Does the arrow point to space #{landedSpace}?
-                </p>
               </div>
             </div>
           )}

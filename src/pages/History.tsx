@@ -40,6 +40,30 @@ export default function History() {
     loadHistory();
   };
 
+  const handleDeleteAllHistory = async () => {
+    const confirmed = window.confirm(
+      'Are you sure you want to delete ALL spin history?\n\n' +
+      'This will:\n' +
+      '• Delete all history entries permanently\n' +
+      '• Make all team members eligible again\n' +
+      '• This action CANNOT be undone!\n\n' +
+      'Click OK to confirm deletion.'
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await firestoreService.deleteAllHistory();
+      loadHistory();
+      alert('All history has been deleted. All team members are now eligible to be selected.');
+    } catch (error) {
+      console.error('Error deleting history:', error);
+      alert('Failed to delete history. Please try again.');
+    }
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
@@ -170,6 +194,19 @@ export default function History() {
             </div>
           );
         })}
+      </div>
+
+      {/* Delete All History Button */}
+      <div className="mt-8 pt-6 border-t border-gray-200">
+        <button
+          onClick={handleDeleteAllHistory}
+          className="w-full px-6 py-3 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-colors"
+        >
+          Delete All History
+        </button>
+        <p className="text-sm text-gray-500 text-center mt-2">
+          This will permanently delete all spin history and make everyone eligible again
+        </p>
       </div>
     </div>
   );
