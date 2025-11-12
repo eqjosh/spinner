@@ -174,12 +174,11 @@ export default function Spinner() {
       // Clear label for next spin
       setLabel('');
 
-      // Reload eligible members to update the wheel
-      // This will cause photos to shift, but that's correct:
-      // - The winner just became ineligible
-      // - They should be removed from all their spaces on the wheel
-      // - Remaining eligible members redistribute across the 18 spaces
-      await loadMembers();
+      // Wait 3 seconds before reloading members to let user see the winner
+      // Then reload to remove the newly ineligible winner from the wheel
+      setTimeout(async () => {
+        await loadMembers();
+      }, 3000);
     }, 5000);
   };
 
@@ -322,9 +321,11 @@ export default function Spinner() {
                 const x = 192 + radius * Math.cos(angleRad);
                 const y = 192 + radius * Math.sin(angleRad);
 
-                // Rotate photo so it's upright when at the selection point (top)
-                // Negative of the wheel angle so photo stays oriented to screen
-                const photoRotation = -angle;
+                // Counter-rotate photo to maintain screen orientation
+                // As wheel rotates, photo rotates opposite direction to stay screen-fixed
+                // At rest, photo at space i is rotated i*20+10 degrees
+                // This makes photo upright when that space reaches the top
+                const photoRotation = angle - rotation;
 
                 return (
                   <div
