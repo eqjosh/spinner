@@ -13,6 +13,7 @@ export default function Spinner() {
   const [eligibleMembers, setEligibleMembers] = useState<TeamMember[]>([]);
   const [spaceAssignments, setSpaceAssignments] = useState<(TeamMember | null)[]>([]);
   const [winner, setWinner] = useState<TeamMember | null>(null);
+  const [winnerLabel, setWinnerLabel] = useState<string>('');
   const spinTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -146,6 +147,7 @@ export default function Spinner() {
       }
 
       setWinner(actualWinner);
+      setWinnerLabel(label.trim()); // Save label for winner display
 
       // Save to history - build object without undefined fields
       const historyEntry: Partial<SpinHistory> = {
@@ -418,6 +420,13 @@ export default function Spinner() {
             <div className="space-y-4">
               <div className="p-6 bg-green-100 border-2 border-green-500 rounded-lg animate-pulse">
                 <h3 className="text-2xl font-bold text-green-800 mb-3 text-center">Winner!</h3>
+                {winnerLabel && (
+                  <div className="text-center mb-3">
+                    <span className="px-4 py-2 bg-blue-600 text-white rounded-full text-lg font-semibold">
+                      {winnerLabel}
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-center justify-center gap-4">
                   {winner.photo ? (
                     <img
