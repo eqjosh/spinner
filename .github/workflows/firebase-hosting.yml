@@ -3,7 +3,7 @@ name: Deploy to Firebase Hosting
 on:
   push:
     branches:
-      - main
+      - claude/implement-login-screen-011CUT2K2mLVAV8NdGx2mCbc
   workflow_dispatch:
 
 jobs:
