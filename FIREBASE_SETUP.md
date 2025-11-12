@@ -21,7 +21,7 @@ This guide will help you set up Firebase for your Team Spinner application.
 
 1. In your Firebase project dashboard, click the web icon (`</>`) to add a web app
 2. Enter an app nickname (e.g., "Team Spinner Web")
-3. Do NOT check "Also set up Firebase Hosting" (we're using Netlify)
+3. You can check "Also set up Firebase Hosting" if prompted (we'll configure this later)
 4. Click "Register app"
 5. You'll see a configuration object - **keep this page open, you'll need these values soon**
 
@@ -114,7 +114,7 @@ export const firebaseConfig = {
 7. Spin the wheel
 8. Check that your data persists when you refresh the page
 
-## Step 8: Deploy to Netlify
+## Step 8: Deploy to Firebase Hosting
 
 1. Commit your changes:
    ```bash
@@ -122,8 +122,9 @@ export const firebaseConfig = {
    git commit -m "Add Firebase configuration"
    git push origin main
    ```
-2. Netlify will automatically rebuild your site with the new Firebase configuration
-3. Visit your deployed site and test the authentication and data persistence
+2. Follow the deployment instructions in the main [README.md](README.md#deployment-to-firebase-hosting-recommended)
+3. Your site will be automatically deployed via GitHub Actions
+4. Visit your deployed site at `https://YOUR-PROJECT-ID.web.app`
 
 ## Troubleshooting
 

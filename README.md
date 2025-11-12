@@ -36,7 +36,7 @@ A web application for randomly selecting team members with a roulette wheel inte
 - **Styling**: Tailwind CSS v3
 - **Authentication**: Firebase Authentication (Email/Password)
 - **Database**: Cloud Firestore (NoSQL database)
-- **Deployment**: Netlify (or AWS S3)
+- **Deployment**: Firebase Hosting
 
 ## Local Development
 
@@ -67,142 +67,83 @@ npm run build
 
 The built files will be in the `dist/` directory.
 
-## Deployment to AWS S3
+## Deployment to Firebase Hosting (Recommended)
 
-### Step 1: Build the Application
+Firebase Hosting is the best choice since you're already using Firebase for authentication and database. It's free, fast, and integrates seamlessly with your Firebase services.
+
+### Benefits
+- **Free tier**: 10 GB storage, 360 MB/day bandwidth
+- **Global CDN**: Fast content delivery worldwide
+- **HTTPS**: Free SSL certificate included
+- **Auto-deploy**: GitHub Actions workflow included
+- **Same ecosystem**: Colocated with your Firebase database
+
+### Initial Setup (One-time)
+
+1. **Install Firebase CLI**:
+   ```bash
+   npm install -g firebase-tools
+   ```
+
+2. **Login to Firebase**:
+   ```bash
+   firebase login
+   ```
+
+3. **Get your Firebase Project ID**:
+   - Go to [Firebase Console](https://console.firebase.google.com/)
+   - Click on your project
+   - Copy the Project ID from the project settings
+
+4. **Update configuration files**:
+   - Edit `.firebaserc` and replace `your-project-id-here` with your actual Firebase Project ID
+   - Edit `.github/workflows/firebase-hosting.yml` and replace `your-project-id-here` with your actual Project ID
+
+5. **Set up GitHub Actions** (for auto-deployment):
+   ```bash
+   # Generate a service account key
+   firebase init hosting:github
+   ```
+   This will:
+   - Set up the GitHub Actions workflow
+   - Create a `FIREBASE_SERVICE_ACCOUNT` secret in your GitHub repository
+   - Enable automatic deployments on push to main branch
+
+### Manual Deployment
+
+To deploy manually from your local machine:
 
 ```bash
+# Build the application
 npm run build
+
+# Deploy to Firebase Hosting
+firebase deploy --only hosting
 ```
 
-This creates a production-ready build in the `dist/` directory.
+Your site will be live at: `https://YOUR-PROJECT-ID.web.app`
 
-### Step 2: Create an S3 Bucket
+### Automatic Deployment (Recommended)
 
-1. Go to AWS S3 Console
-2. Click "Create bucket"
-3. Choose a unique bucket name (e.g., `team-spinner-app`)
-4. Choose your preferred region
-5. **Uncheck** "Block all public access" (we need public access for static hosting)
-6. Click "Create bucket"
+The included GitHub Actions workflow (`.github/workflows/firebase-hosting.yml`) automatically deploys your site when you push to the main branch.
 
-### Step 3: Enable Static Website Hosting
+**Setup Steps**:
+1. Run `firebase init hosting:github` (as shown above)
+2. Push your code to GitHub
+3. Every push to `main` branch will automatically deploy
 
-1. Go to your bucket
-2. Click the "Properties" tab
-3. Scroll to "Static website hosting"
-4. Click "Edit"
-5. Select "Enable"
-6. Index document: `index.html`
-7. Error document: `index.html` (for SPA routing)
-8. Click "Save changes"
+### Custom Domain (Optional)
 
-### Step 4: Configure Bucket Policy
+1. Go to Firebase Console > Hosting
+2. Click "Add custom domain"
+3. Follow the instructions to verify domain ownership
+4. Firebase will automatically provision an SSL certificate
 
-1. Go to the "Permissions" tab
-2. Scroll to "Bucket policy"
-3. Click "Edit"
-4. Add the following policy (replace `YOUR-BUCKET-NAME` with your actual bucket name):
+### View Your Site
 
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "PublicReadGetObject",
-      "Effect": "Allow",
-      "Principal": "*",
-      "Action": "s3:GetObject",
-      "Resource": "arn:aws:s3:::YOUR-BUCKET-NAME/*"
-    }
-  ]
-}
-```
-
-5. Click "Save changes"
-
-### Step 5: Upload Files
-
-#### Option A: Using AWS Console
-
-1. Go to the "Objects" tab
-2. Click "Upload"
-3. Click "Add files" or drag and drop all files from the `dist/` folder
-4. Click "Upload"
-
-#### Option B: Using AWS CLI
-
-```bash
-# Install AWS CLI if you haven't already
-# Configure AWS CLI with your credentials
-aws configure
-
-# Sync the dist folder to your S3 bucket
-aws s3 sync dist/ s3://YOUR-BUCKET-NAME/ --delete
-
-# Set proper content types
-aws s3 cp dist/ s3://YOUR-BUCKET-NAME/ \
-  --recursive \
-  --content-type-preset
-```
-
-### Step 6: Access Your Application
-
-1. Go to the "Properties" tab
-2. Scroll to "Static website hosting"
-3. Copy the "Bucket website endpoint" URL
-4. Open it in your browser
-
-Example URL: `http://YOUR-BUCKET-NAME.s3-website-REGION.amazonaws.com`
-
-### Optional: Set Up CloudFront for HTTPS
-
-For HTTPS and better performance:
-
-1. Go to AWS CloudFront Console
-2. Click "Create Distribution"
-3. Origin Domain: Select your S3 bucket
-4. Origin Path: Leave empty
-5. Enable "Use website endpoint" if available
-6. Viewer Protocol Policy: "Redirect HTTP to HTTPS"
-7. Default Root Object: `index.html`
-8. Create distribution
-9. Wait for deployment (can take 10-15 minutes)
-10. Use the CloudFront domain name (supports HTTPS)
-
-### Optional: Custom Domain
-
-1. Register or use existing domain in Route 53
-2. Create SSL certificate in AWS Certificate Manager (ACM)
-3. Add custom domain to CloudFront distribution
-4. Create Route 53 A record pointing to CloudFront
-
-## Deployment to Netlify (Recommended)
-
-Netlify offers automatic deployments from Git with HTTPS and continuous deployment.
-
-### Setup
-
-1. Push your code to GitHub (or GitLab/Bitbucket)
-
-2. Go to [Netlify](https://www.netlify.com/) and sign up/login
-
-3. Click "Add new site" > "Import an existing project"
-
-4. Choose your Git provider and repository
-
-5. Configure build settings:
-   - **Build command**: `npm run build`
-   - **Publish directory**: `dist`
-
-6. Click "Deploy site"
-
-### After Deployment
-
-- Netlify will provide a URL like `https://your-site.netlify.app`
-- Every push to your main branch will trigger automatic redeployment
-- HTTPS is enabled by default
-- You can add a custom domain in Site settings
+- **Firebase domain**: `https://YOUR-PROJECT-ID.web.app`
+- **Alternative**: `https://YOUR-PROJECT-ID.firebaseapp.com`
+- **Custom domain**: Your own domain (if configured)
 
 **Important**: Make sure your Firebase configuration is set up in `src/config/firebase.config.ts` before deploying!
 
