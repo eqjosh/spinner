@@ -1,19 +1,24 @@
 import { useState, useEffect } from 'react';
+import { useTeam } from '../context/TeamContext';
 import { firestoreService } from '../services/firestore';
 import type { TeamMember } from '../types';
 
 export default function TeamAdmin() {
+  const { selectedTeam } = useTeam();
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ name: '', photo: '' });
 
   useEffect(() => {
-    loadTeam();
-  }, []);
+    if (selectedTeam) {
+      loadTeam();
+    }
+  }, [selectedTeam]);
 
   const loadTeam = async () => {
-    const data = await firestoreService.getTeam();
+    if (!selectedTeam) return;
+    const data = await firestoreService.getTeamMembers(selectedTeam.id);
     setTeam(data);
   };
 
@@ -34,6 +39,8 @@ export default function TeamAdmin() {
   };
 
   const handleSave = async () => {
+    if (!selectedTeam) return;
+
     if (!formData.name.trim()) {
       alert('Please enter a name');
       return;
@@ -46,9 +53,9 @@ export default function TeamAdmin() {
         photo: formData.photo || undefined,
         isActive: true,
       };
-      await firestoreService.addTeamMember(newMember);
+      await firestoreService.addTeamMember(selectedTeam.id, newMember);
     } else if (editingId) {
-      await firestoreService.updateTeamMember(editingId, {
+      await firestoreService.updateTeamMember(selectedTeam.id, editingId, {
         name: formData.name.trim(),
         photo: formData.photo || undefined,
       });
@@ -76,13 +83,15 @@ export default function TeamAdmin() {
   };
 
   const handleToggleActive = async (id: string, currentStatus: boolean) => {
-    await firestoreService.updateTeamMember(id, { isActive: !currentStatus });
+    if (!selectedTeam) return;
+    await firestoreService.updateTeamMember(selectedTeam.id, id, { isActive: !currentStatus });
     loadTeam();
   };
 
   const handleDelete = async (id: string, name: string) => {
+    if (!selectedTeam) return;
     if (confirm(`Are you sure you want to delete ${name}?`)) {
-      await firestoreService.deleteTeamMember(id);
+      await firestoreService.deleteTeamMember(selectedTeam.id, id);
       loadTeam();
     }
   };

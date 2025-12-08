@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - claude/implement-login-screen-011CUT2K2mLVAV8NdGx2mCbc
+      - claude/fix-login-issue-01NXCmTBTdGakbBMmEbtohvP
   workflow_dispatch:
 
 jobs:

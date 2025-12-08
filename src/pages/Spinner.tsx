@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useTeam } from '../context/TeamContext';
 import { firestoreService } from '../services/firestore';
 import type { TeamMember, SpinHistory } from '../types';
 
@@ -7,6 +8,7 @@ const TOTAL_SPACES = 18;
 const DEGREES_PER_SPACE = 360 / TOTAL_SPACES; // 20 degrees per space
 
 export default function Spinner() {
+  const { selectedTeam } = useTeam();
   const [label, setLabel] = useState('');
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
@@ -17,7 +19,9 @@ export default function Spinner() {
   const spinTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
-    loadMembers();
+    if (selectedTeam) {
+      loadMembers();
+    }
 
     // Cleanup timeout on unmount
     return () => {
@@ -25,10 +29,12 @@ export default function Spinner() {
         clearTimeout(spinTimeoutRef.current);
       }
     };
-  }, []);
+  }, [selectedTeam]);
 
   const loadMembers = async () => {
-    const eligible = await firestoreService.getEligibleMembers();
+    if (!selectedTeam) return;
+
+    const eligible = await firestoreService.getEligibleMembers(selectedTeam.id);
     setEligibleMembers(eligible);
 
     // Assign members to the 18 fixed spaces
@@ -164,7 +170,10 @@ export default function Spinner() {
       }
 
       try {
-        await firestoreService.addHistoryEntry(historyEntry as SpinHistory);
+        if (!selectedTeam) {
+          throw new Error('No team selected');
+        }
+        await firestoreService.addHistoryEntry(selectedTeam.id, historyEntry as SpinHistory);
         console.log('✓ History entry saved successfully');
       } catch (error: any) {
         console.error('✗ Failed to save history entry:', error);

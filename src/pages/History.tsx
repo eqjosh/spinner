@@ -1,18 +1,23 @@
 import { useState, useEffect } from 'react';
+import { useTeam } from '../context/TeamContext';
 import { firestoreService } from '../services/firestore';
 import type { SpinHistory } from '../types';
 
 export default function History() {
+  const { selectedTeam } = useTeam();
   const [history, setHistory] = useState<SpinHistory[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState('');
 
   useEffect(() => {
-    loadHistory();
-  }, []);
+    if (selectedTeam) {
+      loadHistory();
+    }
+  }, [selectedTeam]);
 
   const loadHistory = async () => {
-    const data = await firestoreService.getHistory();
+    if (!selectedTeam) return;
+    const data = await firestoreService.getHistory(selectedTeam.id);
     setHistory(data);
   };
 
@@ -22,7 +27,8 @@ export default function History() {
   };
 
   const handleSaveLabel = async (id: string) => {
-    await firestoreService.updateHistoryEntry(id, { label: editLabel || undefined });
+    if (!selectedTeam) return;
+    await firestoreService.updateHistoryEntry(selectedTeam.id, id, { label: editLabel || undefined });
     setEditingId(null);
     setEditLabel('');
     loadHistory();
@@ -34,13 +40,16 @@ export default function History() {
   };
 
   const handleToggleEligibility = async (entry: SpinHistory) => {
-    await firestoreService.updateHistoryEntry(entry.id, {
+    if (!selectedTeam) return;
+    await firestoreService.updateHistoryEntry(selectedTeam.id, entry.id, {
       canBeSelectedAgain: !entry.canBeSelectedAgain,
     });
     loadHistory();
   };
 
   const handleDeleteAllHistory = async () => {
+    if (!selectedTeam) return;
+
     const confirmed = window.confirm(
       'Are you sure you want to delete ALL spin history?\n\n' +
       'This will:\n' +
@@ -55,7 +64,7 @@ export default function History() {
     }
 
     try {
-      await firestoreService.deleteAllHistory();
+      await firestoreService.deleteAllHistory(selectedTeam.id);
       loadHistory();
       alert('All history has been deleted. All team members are now eligible to be selected.');
     } catch (error) {

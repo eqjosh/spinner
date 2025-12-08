@@ -9,7 +9,7 @@ import {
   orderBy
 } from 'firebase/firestore';
 import { db, auth } from '../config/firebase';
-import type { TeamMember, SpinHistory } from '../types';
+import type { Team, TeamMember, SpinHistory } from '../types';
 
 // Get current user ID
 const getUserId = (): string => {
@@ -19,36 +19,87 @@ const getUserId = (): string => {
 };
 
 // Collection references
-const getTeamCollection = () => {
+const getTeamsCollection = () => {
   const userId = getUserId();
-  return collection(db, 'users', userId, 'team');
+  return collection(db, 'users', userId, 'teams');
 };
 
-const getHistoryCollection = () => {
+const getTeamMembersCollection = (teamId: string) => {
   const userId = getUserId();
-  return collection(db, 'users', userId, 'history');
+  return collection(db, 'users', userId, 'teams', teamId, 'members');
+};
+
+const getHistoryCollection = (teamId: string) => {
+  const userId = getUserId();
+  return collection(db, 'users', userId, 'teams', teamId, 'history');
 };
 
 export const firestoreService = {
-  // Team methods
-  async getTeam(): Promise<TeamMember[]> {
+  // Team management methods
+  async getTeams(): Promise<Team[]> {
     try {
-      const teamCol = getTeamCollection();
-      // IMPORTANT: Order by name to ensure consistent ordering across queries
-      // This prevents wheel segments from being misaligned with member indices
-      const q = query(teamCol, orderBy('name'));
+      const teamsCol = getTeamsCollection();
+      const q = query(teamsCol, orderBy('createdAt', 'desc'));
       const snapshot = await getDocs(q);
-      return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as TeamMember));
+      return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Team));
     } catch (error) {
-      console.error('Error getting team:', error);
+      console.error('Error getting teams:', error);
       return [];
     }
   },
 
-  async addTeamMember(member: TeamMember): Promise<void> {
+  async createTeam(team: Team): Promise<void> {
     try {
-      const teamCol = getTeamCollection();
-      const memberRef = doc(teamCol, member.id);
+      const teamsCol = getTeamsCollection();
+      const teamRef = doc(teamsCol, team.id);
+      await setDoc(teamRef, team);
+    } catch (error) {
+      console.error('Error creating team:', error);
+      throw error;
+    }
+  },
+
+  async updateTeam(id: string, updates: Partial<Team>): Promise<void> {
+    try {
+      const teamsCol = getTeamsCollection();
+      const teamRef = doc(teamsCol, id);
+      await updateDoc(teamRef, updates);
+    } catch (error) {
+      console.error('Error updating team:', error);
+      throw error;
+    }
+  },
+
+  async deleteTeam(id: string): Promise<void> {
+    try {
+      const teamsCol = getTeamsCollection();
+      const teamRef = doc(teamsCol, id);
+      await deleteDoc(teamRef);
+    } catch (error) {
+      console.error('Error deleting team:', error);
+      throw error;
+    }
+  },
+
+  // Team member methods (now scoped to a specific team)
+  async getTeamMembers(teamId: string): Promise<TeamMember[]> {
+    try {
+      const membersCol = getTeamMembersCollection(teamId);
+      // IMPORTANT: Order by name to ensure consistent ordering across queries
+      // This prevents wheel segments from being misaligned with member indices
+      const q = query(membersCol, orderBy('name'));
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as TeamMember));
+    } catch (error) {
+      console.error('Error getting team members:', error);
+      return [];
+    }
+  },
+
+  async addTeamMember(teamId: string, member: TeamMember): Promise<void> {
+    try {
+      const membersCol = getTeamMembersCollection(teamId);
+      const memberRef = doc(membersCol, member.id);
       await setDoc(memberRef, member);
     } catch (error) {
       console.error('Error adding team member:', error);
@@ -56,10 +107,10 @@ export const firestoreService = {
     }
   },
 
-  async updateTeamMember(id: string, updates: Partial<TeamMember>): Promise<void> {
+  async updateTeamMember(teamId: string, id: string, updates: Partial<TeamMember>): Promise<void> {
     try {
-      const teamCol = getTeamCollection();
-      const memberRef = doc(teamCol, id);
+      const membersCol = getTeamMembersCollection(teamId);
+      const memberRef = doc(membersCol, id);
       await updateDoc(memberRef, updates);
     } catch (error) {
       console.error('Error updating team member:', error);
@@ -67,10 +118,10 @@ export const firestoreService = {
     }
   },
 
-  async deleteTeamMember(id: string): Promise<void> {
+  async deleteTeamMember(teamId: string, id: string): Promise<void> {
     try {
-      const teamCol = getTeamCollection();
-      const memberRef = doc(teamCol, id);
+      const membersCol = getTeamMembersCollection(teamId);
+      const memberRef = doc(membersCol, id);
       await deleteDoc(memberRef);
     } catch (error) {
       console.error('Error deleting team member:', error);
@@ -78,10 +129,10 @@ export const firestoreService = {
     }
   },
 
-  // History methods
-  async getHistory(): Promise<SpinHistory[]> {
+  // History methods (now scoped to a specific team)
+  async getHistory(teamId: string): Promise<SpinHistory[]> {
     try {
-      const historyCol = getHistoryCollection();
+      const historyCol = getHistoryCollection(teamId);
       const q = query(historyCol, orderBy('date', 'desc'));
       const snapshot = await getDocs(q);
       return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as SpinHistory));
@@ -91,9 +142,9 @@ export const firestoreService = {
     }
   },
 
-  async addHistoryEntry(entry: SpinHistory): Promise<void> {
+  async addHistoryEntry(teamId: string, entry: SpinHistory): Promise<void> {
     try {
-      const historyCol = getHistoryCollection();
+      const historyCol = getHistoryCollection(teamId);
       const entryRef = doc(historyCol, entry.id);
       await setDoc(entryRef, entry);
     } catch (error) {
@@ -102,9 +153,9 @@ export const firestoreService = {
     }
   },
 
-  async updateHistoryEntry(id: string, updates: Partial<SpinHistory>): Promise<void> {
+  async updateHistoryEntry(teamId: string, id: string, updates: Partial<SpinHistory>): Promise<void> {
     try {
-      const historyCol = getHistoryCollection();
+      const historyCol = getHistoryCollection(teamId);
       const entryRef = doc(historyCol, id);
       await updateDoc(entryRef, updates);
     } catch (error) {
@@ -113,9 +164,9 @@ export const firestoreService = {
     }
   },
 
-  async deleteAllHistory(): Promise<void> {
+  async deleteAllHistory(teamId: string): Promise<void> {
     try {
-      const historyCol = getHistoryCollection();
+      const historyCol = getHistoryCollection(teamId);
       const snapshot = await getDocs(historyCol);
 
       // Delete all history entries
@@ -132,10 +183,10 @@ export const firestoreService = {
   },
 
   // Utility methods
-  async getEligibleMembers(): Promise<TeamMember[]> {
+  async getEligibleMembers(teamId: string): Promise<TeamMember[]> {
     try {
-      const team = await this.getTeam();
-      const history = await this.getHistory();
+      const team = await this.getTeamMembers(teamId);
+      const history = await this.getHistory(teamId);
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './config/firebase';
+import { TeamProvider } from './context/TeamContext';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 
@@ -44,7 +45,9 @@ function App() {
   return (
     <>
       {isAuthenticated ? (
-        <Dashboard onLogout={handleLogout} />
+        <TeamProvider>
+          <Dashboard onLogout={handleLogout} />
+        </TeamProvider>
       ) : (
         <Login onLogin={handleLogin} />
       )}
