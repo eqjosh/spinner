@@ -324,7 +324,7 @@ export default function Spinner() {
     );
   }
 
-  if (eligibleMemberIds.size === 0) {
+  if (eligibleMemberIds.size === 0 && !winner) {
     return (
       <div className="bg-white rounded-lg shadow-lg p-8 text-center">
         <h2 className="text-2xl font-bold text-gray-800 mb-4">No Eligible Members</h2>
