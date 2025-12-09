@@ -206,6 +206,15 @@ export default function Spinner() {
         return;
       }
 
+      // Safety check: Ensure the landed member is eligible
+      if (!eligibleMemberIds.has(actualWinner.id)) {
+        console.error('ERROR: Landed on ineligible member!', actualWinner.name);
+        console.error('This should not happen. Target was:', randomSpace.member?.name);
+        alert(`Error: Wheel landed on ineligible member (${actualWinner.name}). This indicates a calculation error. Please try again.`);
+        setSpinning(false);
+        return;
+      }
+
       setWinner(actualWinner);
       setWinnerLabel(label.trim()); // Save label for winner display
 
