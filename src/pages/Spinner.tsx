@@ -18,6 +18,16 @@ export default function Spinner() {
   const [winnerLabel, setWinnerLabel] = useState<string>('');
   const spinTimeoutRef = useRef<number | null>(null);
 
+  // Debug state
+  const [debugInfo, setDebugInfo] = useState<{
+    targetSpaceIndex: number;
+    targetMemberName: string;
+    finalRotation: number;
+    landedSpaceIndex: number;
+    landedMemberName: string;
+    match: boolean;
+  } | null>(null);
+
   useEffect(() => {
     if (selectedTeam) {
       loadMembers();
@@ -69,6 +79,7 @@ export default function Spinner() {
     }
 
     setWinner(null);
+    setDebugInfo(null);
     setSpinning(true);
 
     // Select a random space (0-17) from spaces that have eligible members
@@ -154,6 +165,16 @@ export default function Spinner() {
 
       setWinner(actualWinner);
       setWinnerLabel(label.trim()); // Save label for winner display
+
+      // Set debug info
+      setDebugInfo({
+        targetSpaceIndex,
+        targetMemberName: randomSpace.member?.name || 'Unknown',
+        finalRotation,
+        landedSpaceIndex,
+        landedMemberName: actualWinner.name,
+        match,
+      });
 
       // Save to history - build object without undefined fields
       const historyEntry: Partial<SpinHistory> = {
@@ -453,6 +474,21 @@ export default function Spinner() {
                   <p className="text-3xl font-bold text-green-900">{winner.name}</p>
                 </div>
               </div>
+
+              {/* Debug Info */}
+              {debugInfo && (
+                <div className={`p-4 border-2 rounded-lg ${debugInfo.match ? 'bg-blue-50 border-blue-500' : 'bg-red-50 border-red-500'}`}>
+                  <h4 className="font-bold text-lg mb-2 text-gray-800">Debug Info:</h4>
+                  <div className="space-y-1 text-sm font-mono">
+                    <p><strong>Target Space #:</strong> {debugInfo.targetSpaceIndex}</p>
+                    <p><strong>Target Name:</strong> {debugInfo.targetMemberName}</p>
+                    <p className="border-t pt-1 mt-1"><strong>Landed Space #:</strong> {debugInfo.landedSpaceIndex}</p>
+                    <p><strong>Landed Name:</strong> {debugInfo.landedMemberName}</p>
+                    <p className="border-t pt-1 mt-1"><strong>Final Rotation:</strong> {debugInfo.finalRotation.toFixed(2)}°</p>
+                    <p><strong>Match:</strong> <span className={debugInfo.match ? 'text-green-600' : 'text-red-600 font-bold'}>{debugInfo.match ? '✓ YES' : '✗ NO - MISMATCH!'}</span></p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
