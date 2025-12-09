@@ -8,14 +8,15 @@ export default function Spinner() {
   const [label, setLabel] = useState('');
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
-  const [eligibleMembers, setEligibleMembers] = useState<TeamMember[]>([]);
+  const [allMembers, setAllMembers] = useState<TeamMember[]>([]); // All team members
+  const [eligibleMemberIds, setEligibleMemberIds] = useState<Set<string>>(new Set()); // IDs of eligible members
   const [spaceAssignments, setSpaceAssignments] = useState<(TeamMember | null)[]>([]);
   const [winner, setWinner] = useState<TeamMember | null>(null);
   const [winnerLabel, setWinnerLabel] = useState<string>('');
   const spinTimeoutRef = useRef<number | null>(null);
 
-  // Dynamic wheel configuration based on number of eligible members
-  const TOTAL_SPACES = eligibleMembers.length > 0 ? eligibleMembers.length : 1;
+  // Dynamic wheel configuration based on total team size (not just eligible)
+  const TOTAL_SPACES = allMembers.length > 0 ? allMembers.length : 1;
   const DEGREES_PER_SPACE = 360 / TOTAL_SPACES;
 
   // Debug state
@@ -49,11 +50,18 @@ export default function Spinner() {
   const loadMembers = async () => {
     if (!selectedTeam) return;
 
-    const eligible = await firestoreService.getEligibleMembers(selectedTeam.id);
-    setEligibleMembers(eligible);
+    // Load ALL team members (both eligible and ineligible)
+    const all = await firestoreService.getTeamMembers(selectedTeam.id);
+    const activeMembers = all.filter(m => m.isActive);
+    setAllMembers(activeMembers);
 
-    // Assign members to the 18 fixed spaces
-    const assignments = assignMembersToSpaces(eligible);
+    // Load eligible members to track who can be selected
+    const eligible = await firestoreService.getEligibleMembers(selectedTeam.id);
+    const eligibleIds = new Set(eligible.map(m => m.id));
+    setEligibleMemberIds(eligibleIds);
+
+    // Assign ALL members to spaces (not just eligible)
+    const assignments = assignMembersToSpaces(activeMembers);
     setSpaceAssignments(assignments);
   };
 
@@ -96,7 +104,7 @@ export default function Spinner() {
   };
 
   const handleSpin = () => {
-    if (spinning || eligibleMembers.length === 0) return;
+    if (spinning || eligibleMemberIds.size === 0) return;
 
     // Clear any existing timeout from previous spin
     if (spinTimeoutRef.current) {
@@ -107,10 +115,10 @@ export default function Spinner() {
     setDebugInfo(null);
     setSpinning(true);
 
-    // Select a random space (0-17) from spaces that have eligible members
+    // Select a random space from spaces that have ELIGIBLE members only
     const eligibleSpaces = spaceAssignments
       .map((member, index) => ({ member, index }))
-      .filter(s => s.member !== null);
+      .filter(s => s.member !== null && eligibleMemberIds.has(s.member.id));
 
     const randomSpace = eligibleSpaces[Math.floor(Math.random() * eligibleSpaces.length)];
     const targetSpaceIndex = randomSpace.index;
@@ -298,12 +306,23 @@ export default function Spinner() {
     return `M 192 192 L ${x1} ${y1} A 192 192 0 ${largeArc} 1 ${x2} ${y2} Z`;
   };
 
-  if (eligibleMembers.length === 0) {
+  if (allMembers.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+        <h2 className="text-2xl font-bold text-gray-800 mb-4">No Team Members</h2>
+        <p className="text-gray-600 mb-4">
+          Add team members in the Team Admin page to get started.
+        </p>
+      </div>
+    );
+  }
+
+  if (eligibleMemberIds.size === 0) {
     return (
       <div className="bg-white rounded-lg shadow-lg p-8 text-center">
         <h2 className="text-2xl font-bold text-gray-800 mb-4">No Eligible Members</h2>
         <p className="text-gray-600 mb-4">
-          All active members were selected in the last 30 days.
+          All {allMembers.length} team members were selected in the last 30 days.
         </p>
         <p className="text-blue-600 font-medium">
           Check History to allow recent winners to be selected again.
@@ -312,7 +331,7 @@ export default function Spinner() {
     );
   }
 
-  const photoSize = 50; // Fixed size for 18 spaces
+  const photoSize = 50; // Photo size adjusts based on team size
   const colors = ['#ef4444', '#3b82f6', '#22c55e', '#eab308', '#a855f7', '#ec4899', '#6366f1', '#f97316'];
 
   return (
@@ -389,6 +408,9 @@ export default function Spinner() {
               {spaceAssignments.map((member, index) => {
                 if (!member) return null;
 
+                // Check if this member is eligible
+                const isEligible = eligibleMemberIds.has(member.id);
+
                 // Position photo at its assigned space number
                 const angle = index * DEGREES_PER_SPACE + (DEGREES_PER_SPACE / 2); // Center of space
                 const angleRad = ((angle - 90) * Math.PI) / 180; // -90 to start at top
@@ -423,6 +445,8 @@ export default function Spinner() {
                           width: `${photoSize}px`,
                           height: `${photoSize}px`,
                           transform: `rotate(${photoRotation}deg)`,
+                          opacity: isEligible ? 1 : 0.3,
+                          filter: isEligible ? 'none' : 'grayscale(100%)',
                         }}
                       />
                     ) : (
@@ -432,6 +456,7 @@ export default function Spinner() {
                           width: `${photoSize}px`,
                           height: `${photoSize}px`,
                           transform: `rotate(${photoRotation}deg)`,
+                          opacity: isEligible ? 1 : 0.3,
                         }}
                       >
                         <span
@@ -460,7 +485,7 @@ export default function Spinner() {
           {/* Info */}
           <div className="mt-4 text-center text-sm text-gray-600">
             <p>
-              18 spaces • {eligibleMembers.length} eligible members
+              {allMembers.length} spaces • {eligibleMemberIds.size} eligible members
             </p>
           </div>
 
