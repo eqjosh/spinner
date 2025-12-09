@@ -248,6 +248,11 @@ export default function Spinner() {
         }
         await firestoreService.addHistoryEntry(selectedTeam.id, historyEntry as SpinHistory);
         console.log('✓ History entry saved successfully');
+
+        // Immediately update eligibility to prevent re-selection on quick spins
+        const eligible = await firestoreService.getEligibleMembers(selectedTeam.id);
+        const eligibleIds = new Set(eligible.map(m => m.id));
+        setEligibleMemberIds(eligibleIds);
       } catch (error: any) {
         console.error('✗ Failed to save history entry:', error);
         console.error('Error code:', error?.code);
@@ -257,12 +262,6 @@ export default function Spinner() {
 
       // Clear label for next spin
       setLabel('');
-
-      // Wait 3 seconds before reloading members to let user see the winner
-      // Then reload to remove the newly ineligible winner from the wheel
-      setTimeout(async () => {
-        await loadMembers();
-      }, 3000);
     }, 5000);
   };
 
