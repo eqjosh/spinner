@@ -9,6 +9,7 @@ export interface TeamMember {
   name: string;
   photo?: string; // Base64 encoded image or URL
   isActive: boolean;
+  spaceNumber?: number; // Assigned position on wheel (0-17), optional for backward compatibility
 }
 
 export interface SpinHistory {

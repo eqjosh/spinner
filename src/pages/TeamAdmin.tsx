@@ -8,7 +8,7 @@ export default function TeamAdmin() {
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({ name: '', photo: '' });
+  const [formData, setFormData] = useState({ name: '', photo: '', spaceNumber: '' });
 
   useEffect(() => {
     if (selectedTeam) {
@@ -24,18 +24,22 @@ export default function TeamAdmin() {
 
   const handleAddClick = () => {
     setIsAdding(true);
-    setFormData({ name: '', photo: '' });
+    setFormData({ name: '', photo: '', spaceNumber: '' });
   };
 
   const handleEditClick = (member: TeamMember) => {
     setEditingId(member.id);
-    setFormData({ name: member.name, photo: member.photo || '' });
+    setFormData({
+      name: member.name,
+      photo: member.photo || '',
+      spaceNumber: member.spaceNumber !== undefined ? member.spaceNumber.toString() : ''
+    });
   };
 
   const handleCancel = () => {
     setIsAdding(false);
     setEditingId(null);
-    setFormData({ name: '', photo: '' });
+    setFormData({ name: '', photo: '', spaceNumber: '' });
   };
 
   const handleSave = async () => {
@@ -46,18 +50,31 @@ export default function TeamAdmin() {
       return;
     }
 
+    // Validate space number if provided
+    let spaceNumber: number | undefined = undefined;
+    if (formData.spaceNumber.trim()) {
+      const num = parseInt(formData.spaceNumber);
+      if (isNaN(num) || num < 0 || num > 17) {
+        alert('Space number must be between 0 and 17');
+        return;
+      }
+      spaceNumber = num;
+    }
+
     if (isAdding) {
       const newMember: TeamMember = {
         id: Date.now().toString(),
         name: formData.name.trim(),
         photo: formData.photo || undefined,
         isActive: true,
+        spaceNumber,
       };
       await firestoreService.addTeamMember(selectedTeam.id, newMember);
     } else if (editingId) {
       await firestoreService.updateTeamMember(selectedTeam.id, editingId, {
         name: formData.name.trim(),
         photo: formData.photo || undefined,
+        spaceNumber,
       });
     }
 
@@ -156,6 +173,26 @@ export default function TeamAdmin() {
               )}
             </div>
 
+            {/* Space Number */}
+            <div>
+              <label htmlFor="member-space" className="block text-sm font-medium text-gray-700 mb-2">
+                Wheel Position (0-17, Optional)
+              </label>
+              <input
+                type="number"
+                id="member-space"
+                min="0"
+                max="17"
+                value={formData.spaceNumber}
+                onChange={(e) => setFormData({ ...formData, spaceNumber: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Leave blank for auto-assign"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                Assign this person to a specific position on the wheel (0-17). Leave blank to auto-assign.
+              </p>
+            </div>
+
             {/* Action Buttons */}
             <div className="flex gap-2">
               <button
@@ -213,6 +250,11 @@ export default function TeamAdmin() {
                   <p className={`text-sm ${member.isActive ? 'text-green-600' : 'text-red-600'}`}>
                     {member.isActive ? 'Active' : 'Inactive'}
                   </p>
+                  {member.spaceNumber !== undefined && (
+                    <p className="text-sm text-blue-600 font-medium">
+                      Position: #{member.spaceNumber}
+                    </p>
+                  )}
 
                   {/* Actions */}
                   <div className="mt-3 flex flex-wrap gap-2">

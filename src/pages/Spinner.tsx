@@ -57,7 +57,7 @@ export default function Spinner() {
     setSpaceAssignments(assignments);
   };
 
-  // Distribute eligible members across 18 fixed spaces
+  // Assign members to their designated space numbers on the wheel
   const assignMembersToSpaces = (members: TeamMember[]): (TeamMember | null)[] => {
     const spaces: (TeamMember | null)[] = new Array(TOTAL_SPACES).fill(null);
 
@@ -65,11 +65,30 @@ export default function Spinner() {
       return spaces;
     }
 
-    // Distribute members evenly across spaces
-    // If fewer members than spaces, they'll repeat to fill the wheel
-    // If more members than spaces, we'll cycle through them
-    for (let i = 0; i < TOTAL_SPACES; i++) {
-      spaces[i] = members[i % members.length];
+    // Place each member at their assigned space number
+    // If no space number assigned, auto-assign to fill available spaces
+    const assignedMembers: TeamMember[] = [];
+    const unassignedMembers: TeamMember[] = [];
+
+    members.forEach(member => {
+      if (member.spaceNumber !== undefined && member.spaceNumber >= 0 && member.spaceNumber < TOTAL_SPACES) {
+        spaces[member.spaceNumber] = member;
+        assignedMembers.push(member);
+      } else {
+        unassignedMembers.push(member);
+      }
+    });
+
+    // Auto-assign unassigned members to empty spaces
+    let nextEmptySpace = 0;
+    for (const member of unassignedMembers) {
+      while (nextEmptySpace < TOTAL_SPACES && spaces[nextEmptySpace] !== null) {
+        nextEmptySpace++;
+      }
+      if (nextEmptySpace < TOTAL_SPACES) {
+        spaces[nextEmptySpace] = member;
+        nextEmptySpace++;
+      }
     }
 
     return spaces;
@@ -369,9 +388,8 @@ export default function Spinner() {
               {spaceAssignments.map((member, index) => {
                 if (!member) return null;
 
-                // Shift photo position backward by 1 space to align with space numbers
-                const adjustedIndex = (index - 1 + TOTAL_SPACES) % TOTAL_SPACES;
-                const angle = adjustedIndex * DEGREES_PER_SPACE + (DEGREES_PER_SPACE / 2); // Center of space
+                // Position photo at its assigned space number
+                const angle = index * DEGREES_PER_SPACE + (DEGREES_PER_SPACE / 2); // Center of space
                 const angleRad = ((angle - 90) * Math.PI) / 180; // -90 to start at top
 
                 // Position at 50% of radius from center (moved inward to make room for numbers)
