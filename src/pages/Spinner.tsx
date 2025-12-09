@@ -369,7 +369,9 @@ export default function Spinner() {
               {spaceAssignments.map((member, index) => {
                 if (!member) return null;
 
-                const angle = index * DEGREES_PER_SPACE + (DEGREES_PER_SPACE / 2); // Center of space
+                // Shift photo index by +1 to fix off-by-one visual alignment issue
+                const adjustedIndex = (index + 1) % TOTAL_SPACES;
+                const angle = adjustedIndex * DEGREES_PER_SPACE + (DEGREES_PER_SPACE / 2); // Center of space
                 const angleRad = ((angle - 90) * Math.PI) / 180; // -90 to start at top
 
                 // Position at 50% of radius from center (moved inward to make room for numbers)
