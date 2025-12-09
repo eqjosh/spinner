@@ -518,6 +518,22 @@ export default function Spinner() {
                       </>
                     )}
                     <p className="border-t pt-1 mt-1"><strong>Match:</strong> <span className={debugInfo.match ? 'text-green-600' : 'text-red-600 font-bold'}>{debugInfo.match ? '✓ YES' : '✗ NO - MISMATCH!'}</span></p>
+
+                    {/* Space Assignments */}
+                    {debugInfo.spaceAssignments && debugInfo.spaceAssignments.length > 0 && (
+                      <details className="border-t pt-2 mt-2">
+                        <summary className="cursor-pointer font-bold hover:text-blue-600">Space Assignments (click to expand)</summary>
+                        <div className="mt-2 max-h-48 overflow-y-auto bg-white p-2 rounded border border-gray-300">
+                          <div className="grid grid-cols-2 gap-1">
+                            {debugInfo.spaceAssignments.map(sa => (
+                              <div key={sa.space} className={`text-xs ${sa.space === debugInfo.landedSpaceIndex ? 'bg-yellow-100 font-bold' : ''}`}>
+                                Space {sa.space}: {sa.name}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </details>
+                    )}
                   </div>
                 </div>
               )}
