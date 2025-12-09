@@ -26,6 +26,11 @@ export default function Spinner() {
     landedSpaceIndex: number;
     landedMemberName: string;
     match: boolean;
+    normalizedRotation?: number;
+    spaceAssignments?: Array<{space: number; name: string}>;
+    randomOffset?: number;
+    targetAngle?: number;
+    currentAngle?: number;
   } | null>(null);
 
   useEffect(() => {
@@ -95,9 +100,14 @@ export default function Spinner() {
     console.log('Target member:', randomSpace.member?.name);
 
     // Calculate rotation to land on target space
-    // Pointer is at top (12 o'clock = -90 degrees in SVG = 270 degrees standard)
-    // Spaces are numbered 0-17 clockwise starting from top
-    // Space i's center is at: -90 + i * 20 + 10 = -80 + i * 20
+    // IMPORTANT: Space i has its CENTER at angle: i * DEGREES_PER_SPACE + (DEGREES_PER_SPACE/2) - 90
+    // Which simplifies to: i * 20 + 10 - 90 = i * 20 - 80 degrees
+    //
+    // The pointer is at -90 degrees (top of wheel)
+    //
+    // To put space i's center at the pointer, we need the wheel rotation R such that:
+    // (i * 20 - 80) + R ≡ -90 (mod 360)
+    // R ≡ -90 - (i * 20 - 80) = -90 - i*20 + 80 = -10 - i*20 (mod 360)
 
     const extraSpins = 5 + Math.random() * 3; // 5-8 full rotations
 
@@ -107,12 +117,9 @@ export default function Spinner() {
     const maxOffset = (DEGREES_PER_SPACE / 2) - 3; // 10 - 3 = 7 degrees
     const randomOffset = (Math.random() - 0.5) * 2 * maxOffset; // -7 to +7
 
-    // Target angle for space center to align with pointer at -90 degrees
-    // We want: spaceCenterAngle + rotation = -90
-    // spaceCenterAngle = -90 + targetSpaceIndex * 20 + 10
-    // rotation = -90 - spaceCenterAngle = -90 - (-90 + targetSpaceIndex * 20 + 10)
-    // rotation = -targetSpaceIndex * 20 - 10
-    let targetAngle = -targetSpaceIndex * DEGREES_PER_SPACE - (DEGREES_PER_SPACE / 2) + randomOffset;
+    // Calculate the normalized angle the wheel should be at for target space to align with pointer
+    // Formula: -10 - targetSpaceIndex * 20
+    let targetAngle = -10 - targetSpaceIndex * DEGREES_PER_SPACE + randomOffset;
 
     // Normalize to 0-360 range
     targetAngle = ((targetAngle % 360) + 360) % 360;
@@ -129,12 +136,20 @@ export default function Spinner() {
     // Final rotation
     const finalRotation = rotation + (360 * extraSpins) + rotationNeeded;
 
+    console.log('Random offset:', randomOffset);
     console.log('Current angle:', currentAngle);
     console.log('Target angle:', targetAngle);
     console.log('Rotation needed:', rotationNeeded);
     console.log('Final rotation:', finalRotation);
 
     setRotation(finalRotation);
+
+    // Store intermediate values for debug
+    const debugCalcValues = {
+      randomOffset,
+      targetAngle,
+      currentAngle,
+    };
 
     // Store timeout ID for cleanup
     spinTimeoutRef.current = setTimeout(async () => {
@@ -167,6 +182,7 @@ export default function Spinner() {
       setWinnerLabel(label.trim()); // Save label for winner display
 
       // Set debug info
+      const normalizedRot = ((finalRotation % 360) + 360) % 360;
       setDebugInfo({
         targetSpaceIndex,
         targetMemberName: randomSpace.member?.name || 'Unknown',
@@ -174,6 +190,14 @@ export default function Spinner() {
         landedSpaceIndex,
         landedMemberName: actualWinner.name,
         match,
+        normalizedRotation: normalizedRot,
+        spaceAssignments: spaceAssignments.map((m, i) => ({
+          space: i,
+          name: m?.name || 'Empty'
+        })),
+        randomOffset: debugCalcValues.randomOffset,
+        targetAngle: debugCalcValues.targetAngle,
+        currentAngle: debugCalcValues.currentAngle,
       });
 
       // Save to history - build object without undefined fields
@@ -485,7 +509,15 @@ export default function Spinner() {
                     <p className="border-t pt-1 mt-1"><strong>Landed Space #:</strong> {debugInfo.landedSpaceIndex}</p>
                     <p><strong>Landed Name:</strong> {debugInfo.landedMemberName}</p>
                     <p className="border-t pt-1 mt-1"><strong>Final Rotation:</strong> {debugInfo.finalRotation.toFixed(2)}°</p>
-                    <p><strong>Match:</strong> <span className={debugInfo.match ? 'text-green-600' : 'text-red-600 font-bold'}>{debugInfo.match ? '✓ YES' : '✗ NO - MISMATCH!'}</span></p>
+                    <p><strong>Normalized:</strong> {debugInfo.normalizedRotation?.toFixed(2)}°</p>
+                    {debugInfo.randomOffset !== undefined && (
+                      <>
+                        <p className="border-t pt-1 mt-1"><strong>Random Offset:</strong> {debugInfo.randomOffset.toFixed(2)}°</p>
+                        <p><strong>Target Angle:</strong> {debugInfo.targetAngle?.toFixed(2)}°</p>
+                        <p><strong>Current Angle:</strong> {debugInfo.currentAngle?.toFixed(2)}°</p>
+                      </>
+                    )}
+                    <p className="border-t pt-1 mt-1"><strong>Match:</strong> <span className={debugInfo.match ? 'text-green-600' : 'text-red-600 font-bold'}>{debugInfo.match ? '✓ YES' : '✗ NO - MISMATCH!'}</span></p>
                   </div>
                 </div>
               )}
