@@ -50,12 +50,17 @@ export default function TeamAdmin() {
       return;
     }
 
+    // Calculate max space number based on team size
+    // When adding, max is current team size (new member will be at position team.length)
+    // When editing, max is team size - 1
+    const maxSpaceNumber = isAdding ? team.length : team.length - 1;
+
     // Validate space number if provided
     let spaceNumber: number | undefined = undefined;
     if (formData.spaceNumber && formData.spaceNumber.trim()) {
       const num = parseInt(formData.spaceNumber);
-      if (isNaN(num) || num < 0 || num > 17) {
-        alert('Space number must be between 0 and 17');
+      if (isNaN(num) || num < 0 || num > maxSpaceNumber) {
+        alert(`Space number must be between 0 and ${maxSpaceNumber}`);
         return;
       }
       spaceNumber = num;
@@ -182,14 +187,14 @@ export default function TeamAdmin() {
                 type="number"
                 id="member-space"
                 min="0"
-                max="17"
+                max={isAdding ? team.length : team.length - 1}
                 value={formData.spaceNumber}
                 onChange={(e) => setFormData({ ...formData, spaceNumber: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Auto-assign (leave blank)"
               />
               <p className="mt-1 text-xs text-gray-500">
-                Enter 0-17 to assign a specific wheel position, or leave blank for auto-assignment.
+                Enter 0-{isAdding ? team.length : team.length - 1} to assign a specific wheel position, or leave blank for auto-assignment.
               </p>
             </div>
 

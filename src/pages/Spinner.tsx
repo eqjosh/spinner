@@ -3,10 +3,6 @@ import { useTeam } from '../context/TeamContext';
 import { firestoreService } from '../services/firestore';
 import type { TeamMember, SpinHistory } from '../types';
 
-// Fixed roulette wheel configuration
-const TOTAL_SPACES = 18;
-const DEGREES_PER_SPACE = 360 / TOTAL_SPACES; // 20 degrees per space
-
 export default function Spinner() {
   const { selectedTeam } = useTeam();
   const [label, setLabel] = useState('');
@@ -17,6 +13,10 @@ export default function Spinner() {
   const [winner, setWinner] = useState<TeamMember | null>(null);
   const [winnerLabel, setWinnerLabel] = useState<string>('');
   const spinTimeoutRef = useRef<number | null>(null);
+
+  // Dynamic wheel configuration based on number of eligible members
+  const TOTAL_SPACES = eligibleMembers.length > 0 ? eligibleMembers.length : 1;
+  const DEGREES_PER_SPACE = 360 / TOTAL_SPACES;
 
   // Debug state
   const [debugInfo, setDebugInfo] = useState<{
@@ -59,19 +59,20 @@ export default function Spinner() {
 
   // Assign members to their designated space numbers on the wheel
   const assignMembersToSpaces = (members: TeamMember[]): (TeamMember | null)[] => {
-    const spaces: (TeamMember | null)[] = new Array(TOTAL_SPACES).fill(null);
-
     if (members.length === 0) {
-      return spaces;
+      return [];
     }
 
-    // Place each member at their assigned space number
-    // If no space number assigned, auto-assign to fill available spaces
+    const totalSpaces = members.length;
+    const spaces: (TeamMember | null)[] = new Array(totalSpaces).fill(null);
+
+    // Separate members into assigned and unassigned
     const assignedMembers: TeamMember[] = [];
     const unassignedMembers: TeamMember[] = [];
 
     members.forEach(member => {
-      if (member.spaceNumber !== undefined && member.spaceNumber >= 0 && member.spaceNumber < TOTAL_SPACES) {
+      // Check if member has a valid space number for current team size
+      if (member.spaceNumber !== undefined && member.spaceNumber >= 0 && member.spaceNumber < totalSpaces) {
         spaces[member.spaceNumber] = member;
         assignedMembers.push(member);
       } else {
@@ -82,10 +83,10 @@ export default function Spinner() {
     // Auto-assign unassigned members to empty spaces
     let nextEmptySpace = 0;
     for (const member of unassignedMembers) {
-      while (nextEmptySpace < TOTAL_SPACES && spaces[nextEmptySpace] !== null) {
+      while (nextEmptySpace < totalSpaces && spaces[nextEmptySpace] !== null) {
         nextEmptySpace++;
       }
-      if (nextEmptySpace < TOTAL_SPACES) {
+      if (nextEmptySpace < totalSpaces) {
         spaces[nextEmptySpace] = member;
         nextEmptySpace++;
       }
