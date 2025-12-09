@@ -109,7 +109,7 @@ export default function Spinner() {
     // (i * 20 - 80) + R ≡ -90 (mod 360)
     // R ≡ -90 - (i * 20 - 80) = -90 - i*20 + 80 = -10 - i*20 (mod 360)
 
-    const extraSpins = 5 + Math.random() * 3; // 5-8 full rotations
+    const extraSpins = 5 + Math.floor(Math.random() * 4); // 5, 6, 7, or 8 full rotations (must be integer!)
 
     // Add random offset to avoid stopping on division lines
     // Stay at least 3 degrees away from edges (space is 20 degrees, so stay within 14 degree range)
