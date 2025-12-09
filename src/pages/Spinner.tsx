@@ -129,25 +129,24 @@ export default function Spinner() {
 
     // Calculate rotation to land on target space
     // IMPORTANT: Space i has its CENTER at angle: i * DEGREES_PER_SPACE + (DEGREES_PER_SPACE/2) - 90
-    // Which simplifies to: i * 20 + 10 - 90 = i * 20 - 80 degrees
     //
     // The pointer is at -90 degrees (top of wheel)
     //
     // To put space i's center at the pointer, we need the wheel rotation R such that:
-    // (i * 20 - 80) + R ≡ -90 (mod 360)
-    // R ≡ -90 - (i * 20 - 80) = -90 - i*20 + 80 = -10 - i*20 (mod 360)
+    // (space_center_angle) + R ≡ -90 (mod 360)
+    // R ≡ -90 - (i * DEGREES_PER_SPACE + DEGREES_PER_SPACE/2 - 90)
+    // R ≡ -i * DEGREES_PER_SPACE - DEGREES_PER_SPACE/2
 
     const extraSpins = 5 + Math.floor(Math.random() * 4); // 5, 6, 7, or 8 full rotations (must be integer!)
 
     // Add random offset to avoid stopping on division lines
-    // Stay at least 3 degrees away from edges (space is 20 degrees, so stay within 14 degree range)
-    // This means: offset range is -7 to +7 degrees from center
-    const maxOffset = (DEGREES_PER_SPACE / 2) - 3; // 10 - 3 = 7 degrees
-    const randomOffset = (Math.random() - 0.5) * 2 * maxOffset; // -7 to +7
+    // Stay at least 3 degrees away from edges
+    const maxOffset = (DEGREES_PER_SPACE / 2) - 3;
+    const randomOffset = (Math.random() - 0.5) * 2 * maxOffset;
 
     // Calculate the normalized angle the wheel should be at for target space to align with pointer
-    // Formula: -10 - targetSpaceIndex * 20
-    let targetAngle = -10 - targetSpaceIndex * DEGREES_PER_SPACE + randomOffset;
+    // Formula: -(DEGREES_PER_SPACE/2) - targetSpaceIndex * DEGREES_PER_SPACE
+    let targetAngle = -(DEGREES_PER_SPACE / 2) - targetSpaceIndex * DEGREES_PER_SPACE + randomOffset;
 
     // Normalize to 0-360 range
     targetAngle = ((targetAngle % 360) + 360) % 360;
