@@ -52,7 +52,7 @@ export default function TeamAdmin() {
 
     // Validate space number if provided
     let spaceNumber: number | undefined = undefined;
-    if (formData.spaceNumber.trim()) {
+    if (formData.spaceNumber && formData.spaceNumber.trim()) {
       const num = parseInt(formData.spaceNumber);
       if (isNaN(num) || num < 0 || num > 17) {
         alert('Space number must be between 0 and 17');
@@ -65,7 +65,7 @@ export default function TeamAdmin() {
       const newMember: TeamMember = {
         id: Date.now().toString(),
         name: formData.name.trim(),
-        photo: formData.photo || undefined,
+        photo: formData.photo ? formData.photo : undefined,
         isActive: true,
         spaceNumber,
       };
@@ -73,7 +73,7 @@ export default function TeamAdmin() {
     } else if (editingId) {
       await firestoreService.updateTeamMember(selectedTeam.id, editingId, {
         name: formData.name.trim(),
-        photo: formData.photo || undefined,
+        photo: formData.photo ? formData.photo : undefined,
         spaceNumber,
       });
     }
@@ -176,7 +176,7 @@ export default function TeamAdmin() {
             {/* Space Number */}
             <div>
               <label htmlFor="member-space" className="block text-sm font-medium text-gray-700 mb-2">
-                Wheel Position (0-17, Optional)
+                Wheel Position (Optional)
               </label>
               <input
                 type="number"
@@ -186,10 +186,10 @@ export default function TeamAdmin() {
                 value={formData.spaceNumber}
                 onChange={(e) => setFormData({ ...formData, spaceNumber: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Leave blank for auto-assign"
+                placeholder="Auto-assign (leave blank)"
               />
               <p className="mt-1 text-xs text-gray-500">
-                Assign this person to a specific position on the wheel (0-17). Leave blank to auto-assign.
+                Enter 0-17 to assign a specific wheel position, or leave blank for auto-assignment.
               </p>
             </div>
 
