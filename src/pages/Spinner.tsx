@@ -104,7 +104,13 @@ export default function Spinner() {
   };
 
   const handleSpin = () => {
-    if (spinning || eligibleMemberIds.size === 0) return;
+    if (spinning) return;
+
+    // Check if there are no eligible members
+    if (eligibleMemberIds.size === 0) {
+      alert(`No Eligible Members\n\nAll ${allMembers.length} team members were selected in the last 30 days.\n\nCheck History to allow recent winners to be selected again.`);
+      return;
+    }
 
     // Clear any existing timeout from previous spin
     if (spinTimeoutRef.current) {
