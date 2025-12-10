@@ -19,20 +19,20 @@ export default function Spinner() {
   const TOTAL_SPACES = allMembers.length > 0 ? allMembers.length : 1;
   const DEGREES_PER_SPACE = 360 / TOTAL_SPACES;
 
-  // Debug state
-  const [debugInfo, setDebugInfo] = useState<{
-    targetSpaceIndex: number;
-    targetMemberName: string;
-    finalRotation: number;
-    landedSpaceIndex: number;
-    landedMemberName: string;
-    match: boolean;
-    normalizedRotation?: number;
-    spaceAssignments?: Array<{space: number; name: string}>;
-    randomOffset?: number;
-    targetAngle?: number;
-    currentAngle?: number;
-  } | null>(null);
+  // Debug state - Disabled
+  // const [debugInfo, setDebugInfo] = useState<{
+  //   targetSpaceIndex: number;
+  //   targetMemberName: string;
+  //   finalRotation: number;
+  //   landedSpaceIndex: number;
+  //   landedMemberName: string;
+  //   match: boolean;
+  //   normalizedRotation?: number;
+  //   spaceAssignments?: Array<{space: number; name: string}>;
+  //   randomOffset?: number;
+  //   targetAngle?: number;
+  //   currentAngle?: number;
+  // } | null>(null);
 
   useEffect(() => {
     if (selectedTeam) {
@@ -118,7 +118,7 @@ export default function Spinner() {
     }
 
     setWinner(null);
-    setDebugInfo(null);
+    // setDebugInfo(null);
     setSpinning(true);
 
     // Select a random space from spaces that have ELIGIBLE members only
@@ -177,12 +177,12 @@ export default function Spinner() {
 
     setRotation(finalRotation);
 
-    // Store intermediate values for debug
-    const debugCalcValues = {
-      randomOffset,
-      targetAngle,
-      currentAngle,
-    };
+    // Store intermediate values for debug - Disabled
+    // const debugCalcValues = {
+    //   randomOffset,
+    //   targetAngle,
+    //   currentAngle,
+    // };
 
     // Store timeout ID for cleanup
     spinTimeoutRef.current = setTimeout(async () => {
@@ -223,24 +223,24 @@ export default function Spinner() {
       setWinner(actualWinner);
       setWinnerLabel(label.trim()); // Save label for winner display
 
-      // Set debug info
-      const normalizedRot = ((finalRotation % 360) + 360) % 360;
-      setDebugInfo({
-        targetSpaceIndex,
-        targetMemberName: randomSpace.member?.name || 'Unknown',
-        finalRotation,
-        landedSpaceIndex,
-        landedMemberName: actualWinner.name,
-        match,
-        normalizedRotation: normalizedRot,
-        spaceAssignments: spaceAssignments.map((m, i) => ({
-          space: i,
-          name: m?.name || 'Empty'
-        })),
-        randomOffset: debugCalcValues.randomOffset,
-        targetAngle: debugCalcValues.targetAngle,
-        currentAngle: debugCalcValues.currentAngle,
-      });
+      // Set debug info - Disabled
+      // const normalizedRot = ((finalRotation % 360) + 360) % 360;
+      // setDebugInfo({
+      //   targetSpaceIndex,
+      //   targetMemberName: randomSpace.member?.name || 'Unknown',
+      //   finalRotation,
+      //   landedSpaceIndex,
+      //   landedMemberName: actualWinner.name,
+      //   match,
+      //   normalizedRotation: normalizedRot,
+      //   spaceAssignments: spaceAssignments.map((m, i) => ({
+      //     space: i,
+      //     name: m?.name || 'Empty'
+      //   })),
+      //   randomOffset: debugCalcValues.randomOffset,
+      //   targetAngle: debugCalcValues.targetAngle,
+      //   currentAngle: debugCalcValues.currentAngle,
+      // });
 
       // Save to history - build object without undefined fields
       const historyEntry: Partial<SpinHistory> = {
@@ -558,8 +558,8 @@ export default function Spinner() {
                 </div>
               </div>
 
-              {/* Debug Info */}
-              {debugInfo && (
+              {/* Debug Info - Disabled */}
+              {/* {debugInfo && (
                 <div className={`p-4 border-2 rounded-lg ${debugInfo.match ? 'bg-blue-50 border-blue-500' : 'bg-red-50 border-red-500'}`}>
                   <h4 className="font-bold text-lg mb-2 text-gray-800">Debug Info:</h4>
                   <div className="space-y-1 text-sm font-mono">
@@ -578,7 +578,6 @@ export default function Spinner() {
                     )}
                     <p className="border-t pt-1 mt-1"><strong>Match:</strong> <span className={debugInfo.match ? 'text-green-600' : 'text-red-600 font-bold'}>{debugInfo.match ? '✓ YES' : '✗ NO - MISMATCH!'}</span></p>
 
-                    {/* Space Assignments */}
                     {debugInfo.spaceAssignments && debugInfo.spaceAssignments.length > 0 && (
                       <details className="border-t pt-2 mt-2">
                         <summary className="cursor-pointer font-bold hover:text-blue-600">Space Assignments (click to expand)</summary>
@@ -595,7 +594,7 @@ export default function Spinner() {
                     )}
                   </div>
                 </div>
-              )}
+              )} */}
             </div>
           )}
         </div>
